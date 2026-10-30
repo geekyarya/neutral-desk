@@ -4,9 +4,9 @@
 # ---------------------------------------------------------------
 
 channel:
-  name: "Neutral Desk"               # shown on screen
-  spoken_name: "न्यूट्रल डेस्क"        # how the anchor says it (write in the episode's language)
-  tagline: "निष्पक्ष खबर, कई स्रोतों से जांची हुई"
+  name: "Zero Masala"                # shown on screen
+  spoken_name: "ज़ीरो मसाला"          # how the anchor says it (write in the episode's language)
+  tagline: "खबर, बिना मसाला"
   language: "hi"                     # hi = Hindi, en = English
 
 # How stories are chosen and checked
