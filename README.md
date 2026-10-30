@@ -48,6 +48,8 @@ python run.py script      # fetch news → cross-check → output/<date>/script.
 **Review `script.json`.** Fix anything wrong and delete any story you don't want. This human check matters for news.
 ```
 python run.py video       # voice + anchor + graphics → output/<date>/episode.mp4
+python run.py shorts      # one vertical Short per story → output/<date>/shorts/
+python run.py weekly      # week in review from the last 7 days → output/week-<date>/
 ```
 The same folder also gets `thumbnail.jpg`, `youtube_title.txt` and `youtube_description.txt`. The description includes every source link and the AI disclosure.
 
@@ -84,6 +86,17 @@ The video uploads as **private**, and you approve it from the YouTube Studio pho
    ```json
    {"client_id": "YOUR_CLIENT_ID", "client_secret": "YOUR_CLIENT_SECRET", "refresh_token": "YOUR_REFRESH_TOKEN", "token_uri": "https://oauth2.googleapis.com/token"}
    ```
+
+## 4b. What runs automatically
+
+| When | Workflow | What it makes |
+|---|---|---|
+| Every day, 07:07 IST | `daily-episode` | The main bulletin (5–6 min) plus one vertical **Short** per story (30–40 s, up to 5). Everything is uploaded, and each Short links to the bulletin. |
+| Every Sunday, 10:07 IST | `weekly-review` | A long **week in review** from the week's best-covered stories. It's saved under the run's *Artifacts* for you to upload manually. |
+
+- **AI backup:** Gemini writes the scripts. If it is down or out of free quota, a small Ollama model (`gemma3:4b`) on the GitHub runner takes over. It is slower and writes weaker Hindi, but the episode still goes out.
+- **YouTube limits:** the free API quota allows 6 uploads a day (1 bulletin + 5 Shorts). If the quota runs out, the remaining uploads are skipped and logged.
+- **Test runs:** under Actions → daily-episode → Run workflow, untick "Upload to YouTube" to test without posting.
 
 ## 5. Realistic AI anchor (optional)
 

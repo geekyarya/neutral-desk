@@ -35,7 +35,11 @@ def build_metadata(episode, cfg):
     stories = [s for s in episode["segments"] if s["kind"] == "story"]
     date_str = date_text(cfg, dt.date.fromisoformat(episode["date"]), short=True)
     top = stories[0]["headline"] if stories else ""
-    title = t["title"].format(headline=top, date=date_str)
+    if episode.get("weekly"):
+        title = t["weekly_yt_title"].format(
+            start=date_text(cfg, dt.date.fromisoformat(episode["week_start"]), short=True), end=date_str)
+    else:
+        title = t["title"].format(headline=top, date=date_str)
     if len(title) > 100:
         title = t["title_short"].format(date=date_str, name=name)
 
@@ -55,13 +59,27 @@ def build_metadata(episode, cfg):
     return {"title": title, "description": desc[:4900]}
 
 
-def upload(episode, cfg, out_dir, interactive=True):
-    from googleapiclient.discovery import build
+def short_metadata(seg, cfg, main_url=None):
+    t = T(cfg)
+    title = t["short_title"].format(headline=seg["headline"])
+    if len(title) > 100:
+        title = seg["headline"][:90] + " #Shorts"
+    lines = [seg["headline"], ""]
+    if main_url:
+        lines += [t["short_desc_full"].format(url=main_url), ""]
+    lines += [t["desc_sources"]] + [f"• {src['outlet']}: {src['url']}" for src in seg["sources"]]
+    lines += ["", t["desc_disclosure_text"], "", "#Shorts " + t["hashtags"]]
+    return {"title": title, "description": "\n".join(lines)[:4900]}
+
+
+class QuotaExceeded(Exception):
+    pass
+
+
+def upload_video(yt, cfg, path, meta, thumb=None):
+    from googleapiclient.errors import HttpError
     from googleapiclient.http import MediaFileUpload
 
-    out_dir = Path(out_dir)
-    meta = build_metadata(episode, cfg)
-    yt = build("youtube", "v3", credentials=credentials(interactive))
     body = {
         "snippet": {"title": meta["title"], "description": meta["description"],
                     "tags": cfg["youtube"]["tags"], "categoryId": cfg["youtube"]["category_id"],
@@ -71,19 +89,43 @@ def upload(episode, cfg, out_dir, interactive=True):
                    "selfDeclaredMadeForKids": False,
                    "containsSyntheticMedia": True},  # YouTube's "altered or synthetic content" flag
     }
-    media = MediaFileUpload(str(out_dir / "episode.mp4"), chunksize=8 * 1024 * 1024, resumable=True)
+    media = MediaFileUpload(str(path), chunksize=8 * 1024 * 1024, resumable=True)
     req = yt.videos().insert(part="snippet,status", body=body, media_body=media)
     resp = None
-    while resp is None:
-        status, resp = req.next_chunk()
-        if status:
-            print(f"  uploaded {int(status.progress() * 100)}%")
+    try:
+        while resp is None:
+            status, resp = req.next_chunk()
+            if status:
+                print(f"  uploaded {int(status.progress() * 100)}%")
+    except HttpError as e:
+        if "quotaExceeded" in str(e) or "uploadLimitExceeded" in str(e):
+            raise QuotaExceeded(str(e)) from e
+        raise
     vid = resp["id"]
-    print(f"Uploaded: https://youtu.be/{vid} ({body['status']['privacyStatus']})")
-    thumb = out_dir / "thumbnail.jpg"
-    if thumb.exists():
+    print(f"Uploaded: https://youtu.be/{vid} ({body['status']['privacyStatus']})  {meta['title']}")
+    if thumb and Path(thumb).exists():
         try:
             yt.thumbnails().set(videoId=vid, media_body=MediaFileUpload(str(thumb))).execute()
         except Exception as e:  # custom thumbnails need a phone-verified channel
-            print(f"  (thumbnail skipped: {e})")
+            print(f"  (thumbnail skipped: {str(e)[:150]})")
     return vid
+
+
+def upload(episode, cfg, out_dir, interactive=True):
+    """Main bulletin first, then each Short (linking back to the bulletin). Skips anything already uploaded."""
+    from googleapiclient.discovery import build
+
+    out_dir = Path(out_dir)
+    yt = build("youtube", "v3", credentials=credentials(interactive))
+    try:
+        if not episode.get("video_id"):
+            episode["video_id"] = upload_video(yt, cfg, out_dir / "episode.mp4", build_metadata(episode, cfg),
+                                               out_dir / "thumbnail.jpg")
+        main_url = f"https://youtu.be/{episode['video_id']}"
+        for seg in episode["segments"]:
+            short = seg.get("short")
+            if short and not short.get("video_id"):
+                short["video_id"] = upload_video(yt, cfg, out_dir / short["file"], short_metadata(seg, cfg, main_url))
+    except QuotaExceeded as e:
+        print(f"YouTube daily upload quota reached; the rest will not be uploaded today. ({str(e)[:150]})")
+    return episode

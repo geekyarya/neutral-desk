@@ -4,8 +4,10 @@
   (review / edit script.json)
   python run.py audio             AI voice for each segment
   python run.py video             voice (if needed) + anchor + graphics -> output/<date>/episode.mp4
-  python run.py upload            upload to YouTube (private by default)
-  python run.py all [--upload]    everything in one go
+  python run.py shorts            vertical Shorts, one per story      -> output/<date>/shorts/
+  python run.py upload            upload bulletin + Shorts to YouTube
+  python run.py all [--upload]    script + video + shorts in one go
+  python run.py weekly            Sunday week-in-review from the last 7 days' scripts -> output/week-<date>/
   python run.py auth              one-time YouTube login
   python run.py pack              zip face + voice files for colab/lipsync.ipynb (realistic anchor)
 """
@@ -70,6 +72,24 @@ def stage_video(cfg, d, ep):
     return ep
 
 
+def stage_shorts(cfg, d, ep):
+    from newsdesk.shorts import render_shorts
+    print("Making Shorts...")
+    ep = render_shorts(ep, cfg, d)
+    save(ep, d)
+    return ep
+
+
+def stage_weekly(cfg, a):
+    import datetime as dt
+    from newsdesk.weekly import build_weekly
+    end = dt.date.fromisoformat(a.date) if a.date else None
+    ep = build_weekly(cfg, end)
+    d = episode_dir(f"week-{ep['date']}")
+    save(ep, d)
+    return stage_video(cfg, d, ep)
+
+
 def stage_pack(cfg, d, ep):
     import zipfile
     from newsdesk.config import ROOT
@@ -89,12 +109,14 @@ def stage_pack(cfg, d, ep):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("stage", choices=["script", "audio", "video", "upload", "all", "auth", "pack"])
+    ap.add_argument("stage", choices=["script", "audio", "video", "shorts", "upload", "all", "auth", "pack", "weekly"])
     ap.add_argument("--date", help="episode date folder (default today)")
     ap.add_argument("--upload", action="store_true", help="with 'all': also upload")
     ap.add_argument("--config")
     a = ap.parse_args()
     cfg = load_config(a.config)
+    if a.stage == "weekly":
+        return stage_weekly(cfg, a)
     d = episode_dir(a.date)
 
     if a.stage == "auth":
@@ -107,17 +129,21 @@ def main():
         stage_audio(cfg, d, load(d))
     elif a.stage == "video":
         stage_video(cfg, d, load(d))
+    elif a.stage == "shorts":
+        stage_shorts(cfg, d, load(d))
     elif a.stage == "upload":
         from newsdesk.upload import upload
-        upload(load(d), cfg, d, interactive=sys.stdin.isatty())
+        save(upload(load(d), cfg, d, interactive=sys.stdin.isatty()), d)
     elif a.stage == "pack":
         stage_pack(cfg, d, load(d))
     elif a.stage == "all":
         ep = stage_script(cfg, d)
         ep = stage_video(cfg, d, ep)
+        if cfg.get("shorts", {}).get("count", 0):
+            ep = stage_shorts(cfg, d, ep)
         if a.upload:
             from newsdesk.upload import upload
-            upload(ep, cfg, d, interactive=False)
+            save(upload(ep, cfg, d, interactive=False), d)
 
 
 if __name__ == "__main__":

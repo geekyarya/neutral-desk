@@ -49,6 +49,17 @@ STRINGS = {
                                 "reports linked above. Errors are possible; please check the sources. "
                                 "Corrections welcome in the comments.",
         "hashtags": "#news #indianews #unbiased #factcheck",
+        "short_outro": "Full bulletin and all sources on {name}.",
+        "short_footer": "Full bulletin & sources on the channel",
+        "short_title": "{headline} #Shorts",
+        "short_desc_full": "Full bulletin: {url}",
+        "weekly_title": "This week's top stories",
+        "weekly_intro": "Welcome to {name}. Here are the biggest stories of the week from {start} to {end}, "
+                        "each one cross-checked across independent media groups.",
+        "weekly_outro": "That was the week on {name}. Every fact was confirmed by at least {k} independent media "
+                        "groups. All sources are in the description. See you next week.",
+        "weekly_yt_title": "The Week in News | {start} – {end}",
+        "weekdays": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
     },
     "hi": {
         "llm_language": (
@@ -93,6 +104,17 @@ STRINGS = {
         "desc_disclosure_text": "इस वीडियो के एंकर, आवाज़ और स्क्रिप्ट ऊपर दिए गए सार्वजनिक स्रोतों से AI द्वारा "
                                 "बनाए गए हैं। गलती संभव है, कृपया स्रोत ज़रूर देखें। सुधार कमेंट में बताएं।",
         "hashtags": "#hindinews #news #indianews #निष्पक्ष_खबर #factcheck",
+        "short_outro": "पूरी खबरें और सभी स्रोत, {name} पर।",
+        "short_footer": "पूरा बुलेटिन और स्रोत चैनल पर",
+        "short_title": "{headline} #Shorts",
+        "short_desc_full": "पूरा बुलेटिन: {url}",
+        "weekly_title": "इस हफ्ते की बड़ी खबरें",
+        "weekly_intro": "नमस्कार, {name} में आपका स्वागत है। ये हैं {start} से {end} तक, इस हफ्ते की सबसे बड़ी खबरें, "
+                        "हर खबर स्वतंत्र मीडिया समूहों की रिपोर्टों से मिलाकर जांची हुई।",
+        "weekly_outro": "ये था इस हफ्ते का हाल। {name} पर हर तथ्य की पुष्टि कम से कम {k} स्वतंत्र मीडिया समूहों ने की है। "
+                        "सभी स्रोतों के लिंक डिस्क्रिप्शन में हैं। अगले हफ्ते फिर मिलेंगे, नमस्कार।",
+        "weekly_yt_title": "हफ्ते की बड़ी खबरें | {start} – {end}",
+        "weekdays": ["सोमवार", "मंगलवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार", "रविवार"],
     },
 }
 

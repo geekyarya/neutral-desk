@@ -23,29 +23,35 @@ def ensure_voice(voice):
     return onnx
 
 
-def synthesize_episode(episode, cfg, out_dir):
-    from piper import PiperVoice
-    from piper.config import SynthesisConfig
+class Speaker:
+    def __init__(self, cfg):
+        from piper import PiperVoice
+        from piper.config import SynthesisConfig
+        t = cfg["tts"]
+        self.voice = PiperVoice.load(str(ensure_voice(t["voice"])))
+        self.syn = SynthesisConfig(length_scale=t["length_scale"])
+        self.sr = self.voice.config.sample_rate
 
-    t = cfg["tts"]
-    voice = PiperVoice.load(str(ensure_voice(t["voice"])))
-    syn = SynthesisConfig(length_scale=t["length_scale"])
-    audio_dir = Path(out_dir) / "audio"
-    audio_dir.mkdir(exist_ok=True)
-
-    for seg in episode["segments"]:
-        path = audio_dir / f"{seg['id']}.wav"
-        chunks = [c.audio_int16_array for c in voice.synthesize(seg["script"], syn_config=syn)]
-        sr = voice.config.sample_rate
-        pause = np.zeros(int(sr * t["pause_after_segment"]), dtype=np.int16)
-        audio = np.concatenate([*chunks, pause])
+    def say(self, text, path, pause=0.0):
+        """Write text as speech to a wav file; returns the duration in seconds."""
+        chunks = [c.audio_int16_array for c in self.voice.synthesize(text, syn_config=self.syn)]
+        audio = np.concatenate([*chunks, np.zeros(int(self.sr * pause), dtype=np.int16)])
         with wave.open(str(path), "wb") as w:
             w.setnchannels(1)
             w.setsampwidth(2)
-            w.setframerate(sr)
+            w.setframerate(self.sr)
             w.writeframes(audio.tobytes())
+        return round(len(audio) / self.sr, 3)
+
+
+def synthesize_episode(episode, cfg, out_dir):
+    speaker = Speaker(cfg)
+    audio_dir = Path(out_dir) / "audio"
+    audio_dir.mkdir(exist_ok=True)
+    for seg in episode["segments"]:
+        path = audio_dir / f"{seg['id']}.wav"
+        seg["duration"] = speaker.say(seg["script"], path, cfg["tts"]["pause_after_segment"])
         seg["audio"] = str(path.relative_to(out_dir))
-        seg["duration"] = round(len(audio) / sr, 3)
         print(f"  {seg['id']:<8} {seg['duration']:6.1f}s")
     return episode
 

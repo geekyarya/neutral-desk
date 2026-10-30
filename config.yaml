@@ -30,6 +30,8 @@ llm:
   gemini_model: "gemini-flash-latest"  # always the newest free Flash model; key from env GEMINI_API_KEY (aistudio.google.com, free)
   gemini_fallback_models: ["gemini-flash-lite-latest"]  # used if the main model is overloaded/retired
   gemini_min_interval: 6            # seconds between calls (free-tier rate limit)
+  fallback_provider: "ollama"       # used when Gemini is down or out of free quota
+  fallback_ollama_model: "gemma3:4b"  # small enough for GitHub's free CPU servers
   temperature: 0.2
 
 # Free offline voice (Piper). Hindi voices: hi_IN-rohan-medium (male), hi_IN-pratham-medium (male),
@@ -95,3 +97,11 @@ feeds:
   - {name: "CNA",                owner: "Mediacorp",           country: "Singapore", section: world, url: "https://www.channelnewsasia.com/rssfeeds/8395884"}
   - {name: "Dawn",               owner: "Dawn Group",          country: "Pakistan",  section: world, url: "https://www.dawn.com/feeds/home"}
   - {name: "Kathmandu Post",     owner: "Kantipur",            country: "Nepal",     section: world, url: "https://kathmandupost.com/rss"}
+
+# Vertical Shorts, one per story (uploaded after the main bulletin)
+shorts:
+  count: 5
+
+# Sunday "week in review" (made from the week's daily scripts, no AI calls)
+weekly:
+  max_stories: 18

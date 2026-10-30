@@ -92,6 +92,8 @@ class Layout:
         tag = t["story_n"].format(i=idx, n=total)
         if seg.get("section") == "world":
             tag += "  |  " + t["world"]
+        if seg.get("date_label"):
+            tag += "  |  " + seg["date_label"]
         self.text(d, (x, y), tag, "label", ACCENT)
         y += s(32)
         for line in wrap(d, seg["headline"], self.f["h1"], w, 2):
@@ -176,6 +178,21 @@ class Layout:
         return strip, tw
 
 
+def encode(frame_rgb, n_frames, W, H, fps, audio_path, target):
+    """Pipe raw frames into FFmpeg together with the voice track."""
+    cmd = ["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
+           "-s", f"{W}x{H}", "-r", str(fps), "-i", "-", "-i", str(audio_path),
+           "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p",
+           "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart", str(target)]
+    print(f"Rendering {Path(target).name}: {n_frames} frames ({n_frames / fps:.0f}s)...")
+    p = subprocess.Popen(cmd, stdin=subprocess.PIPE)
+    for i in range(n_frames):
+        p.stdin.write(frame_rgb(i))
+    p.stdin.close()
+    if p.wait() != 0:
+        raise RuntimeError("ffmpeg failed")
+
+
 def _concat_audio(episode, out_dir):
     parts, sr = [], None
     for seg in episode["segments"]:
@@ -207,7 +224,7 @@ def render_episode(episode, cfg, out_dir):
     for seg in episode["segments"]:
         img = base.copy()
         if seg["kind"] == "intro":
-            L.list_panel(img, seg["headline"], [x["headline"] for x in stories])
+            L.list_panel(img, seg["headline"], [x["headline"] for x in stories[:6]])
         elif seg["kind"] == "outro":
             k = cfg["editor"]["confirm_threshold"]
             L.list_panel(img, seg["headline"], [p.format(k=k) for p in L.t["how_points"]], numbered=False)
@@ -258,18 +275,7 @@ def render_episode(episode, cfg, out_dir):
 
     silent = out_dir / "video_noanchor.mp4" if mode != "puppet" else None
     final = out_dir / "episode.mp4"
-    target = silent or final
-    cmd = ["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
-           "-s", f"{W}x{H}", "-r", str(fps), "-i", "-", "-i", str(audio_path),
-           "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p",
-           "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart", str(target)]
-    print(f"Rendering {n_frames} frames ({n_frames / fps:.0f}s)...")
-    p = subprocess.Popen(cmd, stdin=subprocess.PIPE)
-    for i in range(n_frames):
-        p.stdin.write(frame_rgb(i))
-    p.stdin.close()
-    if p.wait() != 0:
-        raise RuntimeError("ffmpeg failed")
+    encode(frame_rgb, n_frames, W, H, fps, audio_path, silent or final)
 
     if mode == "lipsync":
         _overlay_lipsync(episode, out_dir, silent, final, L)

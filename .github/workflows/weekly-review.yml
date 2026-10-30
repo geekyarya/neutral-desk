@@ -1,0 +1,41 @@
+# Sunday "week in review": stitches the week's best-covered stories (from the daily script-YYYY-MM-DD
+# artifacts) into one long video. No AI calls. The video is saved as a run artifact for you to upload manually.
+name: weekly-review
+
+on:
+  schedule:
+    - cron: "37 4 * * 0"   # Sunday 10:07 IST
+  workflow_dispatch:
+
+permissions:
+  actions: read     # to download the daily script artifacts
+  contents: read
+
+jobs:
+  weekly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: pip install -r requirements.txt
+      - uses: actions/cache@v4
+        with:
+          path: models
+          key: piper-voices-v1
+      - name: Make the week in review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python run.py weekly
+      - uses: actions/upload-artifact@v4
+        with:
+          name: weekly-review
+          path: |
+            output/week-*/episode.mp4
+            output/week-*/thumbnail.jpg
+            output/week-*/youtube_*.txt
+          retention-days: 7

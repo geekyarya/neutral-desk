@@ -27,6 +27,8 @@ Return JSON with exactly these keys:
   Mention disputed claims only with attribution ("According to Dawn, ..." / "This could not be independently
   confirmed"). No opinions, no emotional words (e.g. "shocking", "slams", "massive"), no speculation.
   Do not greet or sign off.
+- "short_script": a {short_words}-word version of "script" for a 30-40 second vertical Short. Open with the single
+  most important confirmed fact as a hook. Same rules: no opinions, attribute anything unconfirmed. No sign-off.
 
 LANGUAGE: write "headline", "fact", "claim" and "script" in {language}
 Outlet names in "outlets" and "reported_by" must be copied exactly (in English) from the brackets below.
@@ -55,7 +57,7 @@ def _stray(text, lang):
 
 
 def _all_text(res):
-    parts = [res.get("headline", ""), res.get("script", "")]
+    parts = [res.get("headline", ""), res.get("script", ""), str(res.get("short_script") or "")]
     parts += [f.get("fact", "") for f in res.get("confirmed_facts") or []]
     parts += [d.get("claim", "") for d in res.get("disputed") or []]
     return " ".join(str(p) for p in parts)
@@ -65,6 +67,7 @@ def _clean(res, lang):
     bad = f"[^{ALLOWED.get(lang, ALLOWED['hi'])}]"
     fix = lambda t: re.sub(bad, "", t)
     res["headline"], res["script"] = fix(res["headline"]), fix(res["script"])
+    res["short_script"] = fix(str(res.get("short_script") or ""))
     for f in res.get("confirmed_facts") or []:
         f["fact"] = fix(f.get("fact", ""))
     for d in res.get("disputed") or []:
@@ -90,13 +93,14 @@ def _verify(result, story, k):
 def _package(res, story, k):
     confirmed, disputed = _verify(res, story, k)
     return {"headline": res["headline"].strip(), "script": res["script"].strip(),
+            "short_script": str(res.get("short_script") or "").strip(),
             "about_india": bool(res.get("about_india", True)),
             "confirmed_facts": confirmed, "disputed": disputed}
 
 
 def _edit_with_llm(story, cfg):
     k = min(cfg["editor"]["confirm_threshold"], story["n_outlets"])
-    prompt = PROMPT.format(n=len(story["articles"]), k=k, words="90 to 130",
+    prompt = PROMPT.format(n=len(story["articles"]), k=k, words="90 to 130", short_words="60 to 80",
                            language=T(cfg)["llm_language"], reports=_reports_text(story))
     lang = cfg["channel"]["language"]
     last, messy = None, None

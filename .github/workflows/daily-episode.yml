@@ -1,24 +1,30 @@
-# Free daily automation on GitHub Actions (free for public repos; ~2000 min/month on private).
-# Makes the Hindi episode with Gemini (free tier, best Hindi) + Piper voice + puppet anchor, uploads it to YouTube
-# and publishes it (privacy is set in config.yaml).
+# Free daily automation on GitHub Actions.
+# Makes the Hindi bulletin + one Short per story, with Gemini (free tier) writing and a small Ollama model
+# on the runner as backup, then uploads everything to YouTube (privacy is set in config.yaml).
 #
 # Repo secrets needed:  GEMINI_API_KEY
 #                       YT_TOKEN (optional) = {"client_id": ..., "client_secret": ..., "refresh_token": ...,
 #                                              "token_uri": "https://oauth2.googleapis.com/token"}
-#                       (see README "YouTube"; without it the video is only saved as a run artifact)
+#                       (see README "YouTube"; without it the videos are only saved as a run artifact)
 name: daily-episode
 
 on:
   schedule:
     - cron: "37 1 * * *"   # 07:07 IST every day
   workflow_dispatch:
+    inputs:
+      upload:
+        description: "Upload to YouTube"
+        type: boolean
+        default: true
 
 jobs:
   episode:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 150   # leaves room for the slow CPU backup model if Gemini is out of quota
     env:
       HAS_YT: ${{ secrets.YT_TOKEN != '' }}
+      OLLAMA_MODELS: /home/runner/ollama-models
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -31,15 +37,33 @@ jobs:
         with:
           path: models
           key: piper-voices-v1
+
+      # --- backup LLM: small Ollama model on the runner's CPU ---
+      - uses: actions/cache@v4
+        with:
+          path: /home/runner/ollama-models
+          key: ollama-gemma3-4b-v1
+      - name: Start backup LLM (Ollama)
+        continue-on-error: true   # if this fails, the run still works with Gemini alone
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          sudo systemctl stop ollama || true
+          nohup ollama serve > /tmp/ollama.log 2>&1 &
+          sleep 5
+          ollama pull "$(python -c "import yaml;print(yaml.safe_load(open('config.yaml'))['llm']['fallback_ollama_model'])")"
+
       - name: Use Gemini on the runner
         run: |
-          sed -i 's/provider: "ollama"/provider: "gemini"/' config.yaml
-      - name: Make episode
+          sed -i 's/^  provider: "ollama"/  provider: "gemini"/' config.yaml
+          grep -n 'provider:' config.yaml
+      - name: Make bulletin + Shorts
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python run.py all
+        run: |
+          python run.py all
+          echo "EPISODE_DATE=$(ls output | sort | tail -1)" >> "$GITHUB_ENV"
       - name: Upload to YouTube
-        if: env.HAS_YT == 'true'
+        if: env.HAS_YT == 'true' && (github.event_name == 'schedule' || inputs.upload)
         env:
           YT_TOKEN: ${{ secrets.YT_TOKEN }}
         run: |
@@ -50,7 +74,14 @@ jobs:
           name: episode
           path: |
             output/*/episode.mp4
+            output/*/shorts/*.mp4
             output/*/thumbnail.jpg
             output/*/script.json
             output/*/youtube_*.txt
           retention-days: 7
+      - name: Keep the script for Sunday's weekly review
+        uses: actions/upload-artifact@v4
+        with:
+          name: script-${{ env.EPISODE_DATE }}
+          path: output/${{ env.EPISODE_DATE }}/script.json
+          retention-days: 14
