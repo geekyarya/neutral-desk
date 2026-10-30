@@ -2,8 +2,10 @@
 # Makes the Hindi episode with Gemini (free tier, best Hindi) + Piper voice + puppet anchor, uploads it to YouTube
 # as PRIVATE so a human reviews it in YouTube Studio before publishing.
 #
-# Repo secrets needed:  GEMINI_API_KEY, YT_CLIENT_SECRET (client_secret.json contents),
-#                       YT_TOKEN (token.json contents, created by `python run.py auth` on your PC)
+# Repo secrets needed:  GEMINI_API_KEY
+#                       YT_TOKEN (optional) = {"client_id": ..., "client_secret": ..., "refresh_token": ...,
+#                                              "token_uri": "https://oauth2.googleapis.com/token"}
+#                       (see README "YouTube"; without it the video is only saved as a run artifact)
 name: daily-episode
 
 on:
@@ -40,10 +42,8 @@ jobs:
         if: env.HAS_YT == 'true'
         env:
           YT_TOKEN: ${{ secrets.YT_TOKEN }}
-          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
         run: |
           echo "$YT_TOKEN" > token.json
-          echo "$YT_CLIENT_SECRET" > client_secret.json
           python run.py upload
       - uses: actions/upload-artifact@v4
         with:

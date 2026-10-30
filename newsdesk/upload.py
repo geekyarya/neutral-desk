@@ -17,7 +17,7 @@ def credentials(interactive=True):
     from google_auth_oauthlib.flow import InstalledAppFlow
 
     creds = Credentials.from_authorized_user_file(str(TOKEN), SCOPES) if TOKEN.exists() else None
-    if creds and creds.expired and creds.refresh_token:
+    if creds and not creds.valid and creds.refresh_token:  # also covers a token.json with only a refresh token
         creds.refresh(Request())
     if not creds or not creds.valid:
         if not interactive:

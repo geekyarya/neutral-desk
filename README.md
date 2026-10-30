@@ -70,10 +70,20 @@ A 4–6 minute episode renders in about 1 minute on a normal laptop CPU.
 
 Push this folder to a GitHub repo. `.github/workflows/daily-episode.yml` builds an episode every day at 07:07 IST on GitHub's free runners, using Gemini and the built-in anchor. Add these repo secrets:
 - `GEMINI_API_KEY`
-- `YT_CLIENT_SECRET`: the contents of `client_secret.json`
-- `YT_TOKEN`: the contents of `token.json`, which `python run.py auth` creates
+- `YT_TOKEN` (optional): your YouTube login, created as described below.
 
 The video uploads as **private**, and you approve it from the YouTube Studio phone app. The video files are also saved as a workflow artifact for 7 days.
+
+**Creating `YT_TOKEN` in the browser (no Python needed):**
+1. Do steps 1 and 2 from section 3 above.
+2. Under **Credentials → Create credentials → OAuth client ID**, choose **Web application** and add the authorized redirect URI `https://developers.google.com/oauthplayground`. Copy the Client ID and Client secret.
+3. Open https://developers.google.com/oauthplayground. Click ⚙️ (top right), tick **Use your own OAuth credentials**, and paste in the Client ID and Client secret.
+4. In the box on the left, type `https://www.googleapis.com/auth/youtube.upload`, click **Authorize APIs**, and log in with the account that owns the channel. If you have several channels, pick the right one. Google may warn that the app isn't verified; click **Advanced → Go to ...**, since it's your own app.
+5. Click **Exchange authorization code for tokens** and copy the **Refresh token**.
+6. In GitHub, create a repo secret named `YT_TOKEN` with this value:
+   ```json
+   {"client_id": "YOUR_CLIENT_ID", "client_secret": "YOUR_CLIENT_SECRET", "refresh_token": "YOUR_REFRESH_TOKEN", "token_uri": "https://oauth2.googleapis.com/token"}
+   ```
 
 ## 5. Realistic AI anchor (optional)
 
