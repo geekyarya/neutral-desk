@@ -17,6 +17,7 @@ from .editor import _clean, _fix_spelling, _reports_text, _stray
 from .fetch import fetch_all, fetch_full_text
 from .llm import complete_json
 from .strings import T
+from .trends import reactions_text, reddit_reactions
 
 WIKI_UA = {"User-Agent": "ZeroMasalaBot/1.0 (https://geekyarya.github.io/neutral-desk/)"}
 IST = dt.timezone(dt.timedelta(hours=5, minutes=30))
@@ -32,10 +33,12 @@ NEWS_PROMPT = """You write 20-30 second news Reels for a strictly neutral channe
 SAME event from independently owned outlets. State as fact only what at least {k} outlets report; attribute
 anything else ("according to NDTV..."). No opinions, no emotional words, no speculation.
 """ + COMMON_RULES + """- "about_india": true if the event is in India or directly involves India/Indians.
+If PUBLIC REACTION posts are given, end the script with ONE sentence on the range of opinions, clearly framed as
+opinion ("सोशल मीडिया पर कुछ लोगों का कहना है ..., तो कुछ ..."), no usernames, nothing hateful.
 
 REPORTS:
 {reports}
-"""
+{reactions}"""
 
 MYSTERY_PROMPT = """You write 20-30 second "mystery" Reels for a fact-first channel called Zero Masala.
 Topic: {topic}. Use ONLY the Wikipedia text below. Structure: a hook question, what is documented, then the
@@ -103,8 +106,11 @@ def make_news(cfg, used_urls):
             continue  # already posted today
         for a in story["articles"]:
             a["text"] = fetch_full_text(a["url"])
+        threads = reddit_reactions(story, cfg["trends"]["reddit_subs"]) if cfg.get("trends", {}).get("reddit") else []
+        reactions = ("\nPUBLIC REACTION (Reddit, opinions NOT facts):\n" + reactions_text(threads)) if threads else ""
         res = complete_json(cfg, NEWS_PROMPT.format(n=len(story["articles"]), k=min(k, story["n_outlets"]),
-                                                    reports=_reports_text(story), **_lang(cfg)))
+                                                    reports=_reports_text(story), reactions=reactions,
+                                                    **_lang(cfg)))
         if story["section"] == "india" and not res.get("about_india", True):
             continue
         res = _finish(res, cfg)

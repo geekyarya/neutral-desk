@@ -129,6 +129,9 @@ class Layout:
                     y += row
                 y += s(4)
             y += s(8)
+        reaction = seg.get("public_reaction")
+        if reaction:
+            limit -= s(108)  # keep room for the opinion box at the bottom
         disputed = [c for c in seg.get("disputed") or [] if c.get("reported_by")]
         if disputed and y < limit - s(70):
             self.text(d, (x, y), t["unconfirmed"], "label", AMBER)
@@ -143,6 +146,15 @@ class Layout:
                     self.text(d, (x + s(22), y), line, "body", (225, 228, 235))
                     y += row
                 y += s(4)
+        if reaction:  # opinions get their own, clearly labelled box, never mixed with facts
+            top = limit + s(6)
+            d.rounded_rectangle([x, top, x + w, top + s(100)], radius=s(8), fill=(30, 36, 60),
+                                outline=(124, 77, 255), width=2)
+            self.text(d, (x + s(14), top + s(4)), t["reaction_label"], "small", (170, 150, 255))
+            ry = top + s(28)
+            for line in wrap(d, reaction, self.f["small"], w - s(28), 3):
+                self.text(d, (x + s(14), ry), line, "small", (225, 228, 235))
+                ry += s(22)
 
     def list_panel(self, img, title, items, numbered=True):
         d = ImageDraw.Draw(img)

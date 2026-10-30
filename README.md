@@ -98,6 +98,13 @@ The video uploads as **private**, and you approve it from the YouTube Studio pho
 - **YouTube limits:** the free API quota allows 6 uploads a day (1 bulletin + 5 Shorts). If the quota runs out, the remaining uploads are skipped and logged.
 - **Test runs:** under Actions → daily-episode → Run workflow, untick "Upload to YouTube" to test without posting.
 
+## 4b-2. How stories are picked (trending first)
+
+1. **Discovery:** the RSS feeds, plus Google News India's top stories (national and world), plus the day's top posts on Indian Reddit, plus your own `trends.watch_topics`. Each topic is expanded with a Google News search, so we see how many different outlets cover it.
+2. **Independence:** outlets are mapped to their media group (`trends.owner_aliases`), and the same owner counts once. A story needs **3+ independent groups**, so memes and single-source rumours drop out.
+3. **Ranking:** independent groups + article volume + Google News prominence + matches with today's top Google searches + Reddit buzz.
+4. **What people say:** for each story, the AI reads top threads from balanced communities (`trends.reddit_subs`) and adds 1–2 sentences on the *range* of opinions. These are labelled "opinion, not fact", with no usernames and nothing hateful. On screen they appear in a separate box, and the threads are linked in the description.
+
 ## 4c. Instagram Reels (6 a day)
 
 The `reels` workflow posts one 20–30 s vertical Reel at 09, 12, 15, 18, 20 and 22 IST. The mix is set under `reels.slots` in `config.yaml`:

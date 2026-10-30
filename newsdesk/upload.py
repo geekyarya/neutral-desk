@@ -53,6 +53,8 @@ def build_metadata(episode, cfg):
         lines.append(f"\n▶ {s['headline']}")
         for src in s["sources"]:
             lines.append(f"• {src['outlet']}: {src['url']}")
+        if s.get("reaction_links"):
+            lines.append(t["desc_reactions"] + ": " + " ".join(f"{r['sub']} {r['url']}" for r in s["reaction_links"]))
     lines += ["", t["desc_how"], t["desc_how_text"].format(k=cfg["editor"]["confirm_threshold"]),
               "", t["desc_disclosure"], t["desc_disclosure_text"], "", t["hashtags"]]
     desc = "\n".join(lines)

@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from .fetch import fetch_full_text
 from .llm import complete_json
 from .strings import T, date_text
+from .trends import reactions_text, reddit_reactions
 
 PROMPT = """You are the editor of a strictly neutral news channel. Below are {n} reports of the SAME event
 from different, independently owned outlets. Outlets may be biased; your job is to separate fact from spin.
@@ -30,12 +31,21 @@ Return JSON with exactly these keys:
 - "short_script": a {short_words}-word version of "script" for a 30-40 second vertical Short. Open with the single
   most important confirmed fact as a hook. Same rules: no opinions, attribute anything unconfirmed. No sign-off.
 
-LANGUAGE: write "headline", "fact", "claim" and "script" in {language}
+- "public_reaction": {reaction_rule}
+
+LANGUAGE: write "headline", "fact", "claim", "script" and "public_reaction" in {language}
 Outlet names in "outlets" and "reported_by" must be copied exactly (in English) from the brackets below.
 
 REPORTS:
 {reports}
-"""
+{reactions}"""
+
+REACTION_RULE = (
+    "1-2 sentences (25-40 words) summarising the RANGE of opinions in the PUBLIC REACTION posts below, clearly "
+    "framed as opinion (e.g. \"सोशल मीडिया पर लोगों की राय बंटी हुई है: कुछ का कहना है ..., जबकि कुछ ...\"). "
+    "Never present an opinion as fact, no usernames, no insults or hateful generalisations about any group, and "
+    "include opposing views if they exist. Use \"\" if the posts are off-topic or there are none.")
+NO_REACTIONS = "Always \"\" (no public reaction available)."
 
 
 def _reports_text(story):
@@ -57,7 +67,8 @@ def _stray(text, lang):
 
 
 def _all_text(res):
-    parts = [res.get("headline", ""), res.get("script", ""), str(res.get("short_script") or "")]
+    parts = [res.get("headline", ""), res.get("script", ""), str(res.get("short_script") or ""),
+             str(res.get("public_reaction") or "")]
     parts += [f.get("fact", "") for f in res.get("confirmed_facts") or []]
     parts += [d.get("claim", "") for d in res.get("disputed") or []]
     return " ".join(str(p) for p in parts)
@@ -68,6 +79,7 @@ def _clean(res, lang):
     fix = lambda t: re.sub(bad, "", t)
     res["headline"], res["script"] = fix(res["headline"]), fix(res["script"])
     res["short_script"] = fix(str(res.get("short_script") or ""))
+    res["public_reaction"] = fix(str(res.get("public_reaction") or ""))
     for f in res.get("confirmed_facts") or []:
         f["fact"] = fix(f.get("fact", ""))
     for d in res.get("disputed") or []:
@@ -95,7 +107,7 @@ def _fix_spelling(res, fixes):
         for wrong, right in fixes.items():
             text = text.replace(wrong, right)
         return text
-    for key in ("headline", "script", "short_script"):
+    for key in ("headline", "script", "short_script", "public_reaction"):
         if res.get(key):
             res[key] = fix(str(res[key]))
     for f in res.get("confirmed_facts") or []:
@@ -108,7 +120,10 @@ def _fix_spelling(res, fixes):
 def _package(res, story, k, fixes=None):
     res = _fix_spelling(res, fixes or {})
     confirmed, disputed = _verify(res, story, k)
-    return {"headline": res["headline"].strip(), "script": res["script"].strip(),
+    reaction = str(res.get("public_reaction") or "").strip()
+    return {"headline": res["headline"].strip(),
+            "script": f"{res['script'].strip()} {reaction}".strip(),  # facts first, then labelled opinion
+            "public_reaction": reaction,
             "short_script": str(res.get("short_script") or "").strip(),
             "about_india": bool(res.get("about_india", True)),
             "confirmed_facts": confirmed, "disputed": disputed}
@@ -116,8 +131,12 @@ def _package(res, story, k, fixes=None):
 
 def _edit_with_llm(story, cfg):
     k = min(cfg["editor"]["confirm_threshold"], story["n_outlets"])
+    reactions = story.get("reactions") or []
     prompt = PROMPT.format(n=len(story["articles"]), k=k, words="90 to 130", short_words="60 to 80",
-                           language=T(cfg)["llm_language"], reports=_reports_text(story))
+                           language=T(cfg)["llm_language"], reports=_reports_text(story),
+                           reaction_rule=REACTION_RULE if reactions else NO_REACTIONS,
+                           reactions=("\nPUBLIC REACTION (Reddit posts and comments: opinions, NOT facts):\n"
+                                      + reactions_text(reactions)) if reactions else "")
     lang = cfg["channel"]["language"]
     fixes = cfg["editor"].get("spelling_fixes") or {}
     last, messy = None, None
@@ -174,6 +193,9 @@ def build_episode(candidates, cfg):
             if got >= want:
                 break
             print(f"Editing [{s['section']}]: {s['articles'][0]['title'][:70]}")
+            if use_llm and cfg.get("trends", {}).get("reddit"):
+                s["reactions"] = reddit_reactions(s, cfg["trends"]["reddit_subs"])
+                print(f"   people's reaction: {len(s['reactions'])} Reddit threads")
             try:
                 out = _edit_with_llm(s, cfg) if use_llm else _edit_without_llm(s)
             except RuntimeError as e:  # one failed story shouldn't kill the whole episode
@@ -195,6 +217,8 @@ def build_episode(candidates, cfg):
             "n_outlets": s["n_outlets"], "countries": s["countries"], "foreign": s["foreign"],
             "sources": [{"outlet": a["outlet"], "owner": a["owner"], "country": a["country"],
                          "title": a["title"], "url": a["url"]} for a in s["articles"]],
+            "reaction_links": [{"sub": t["sub"], "url": t["url"]} for t in s.get("reactions") or []]
+                              if out.get("public_reaction") else [],
         })
 
     t, name = T(cfg), cfg["channel"].get("spoken_name") or cfg["channel"]["name"]

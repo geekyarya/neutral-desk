@@ -141,3 +141,50 @@ reels:
 
 instagram:
   api_version: "v23.0"
+
+# Trending + public opinion
+trends:
+  google_trends: true        # boost stories that match today's top Google searches in India
+  reddit: true               # add "what people say" (summarised range of opinions, labelled as opinion)
+  # communities from across the spectrum, like the news outlets
+  reddit_subs: ["india", "IndiaSpeaks", "indianews", "unitedstatesofindia", "IndianModerate"]
+  google_news: true          # discover today's most prominent stories on Google News India
+  # topics you always want checked (still need 3+ independent media groups to make the cut)
+  watch_topics: ["India China border Arunachal"]
+  # outlet names seen on Google News -> owning media group (same group = one independent source)
+  owner_aliases:
+    "Times of India": "Times Group"
+    "Economic Times": "Times Group"
+    "Navbharat Times": "Times Group"
+    "Mirror": "Times Group"
+    "Hindustan Times": "HT Media"
+    "Livemint": "HT Media"
+    "Mint": "HT Media"
+    "Live Hindustan": "HT Media"
+    "India Today": "India Today Group"
+    "Aaj Tak": "India Today Group"
+    "Business Today": "India Today Group"
+    "The Lallantop": "India Today Group"
+    "News18": "Network18"
+    "CNBC-TV18": "Network18"
+    "Moneycontrol": "Network18"
+    "Firstpost": "Network18"
+    "Zee": "Zee Media"
+    "WION": "Zee Media"
+    "DNA India": "Zee Media"
+    "ABP": "ABP Group"
+    "Telegraph India": "ABP Group"
+    "Anandabazar": "ABP Group"
+    "NDTV": "NDTV"
+    "The Hindu": "The Hindu Group"
+    "BusinessLine": "The Hindu Group"
+    "Indian Express": "Indian Express Group"
+    "Financial Express": "Indian Express Group"
+    "Republic": "Republic Media"
+    "Dainik Bhaskar": "DB Corp"
+    "Dainik Jagran": "Jagran Prakashan"
+    "Jagran": "Jagran Prakashan"
+    "Amar Ujala": "Amar Ujala"
+    "DD News": "Prasar Bharati"
+    "All India Radio": "Prasar Bharati"
+    "BBC": "BBC"
