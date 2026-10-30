@@ -1,0 +1,98 @@
+# Instagram Reels: 6 a day (news / mystery / strange news), one per slot in config.yaml.
+# Each run makes one 20-30 s Reel, hosts the video as a GitHub release file (Instagram needs a public URL),
+# posts it to Instagram, and deletes Reel releases older than 3 days.
+#
+# Repo secrets:  GEMINI_API_KEY
+#                IG_TOKEN       (optional) Instagram long-lived access token; without it the Reel is only
+#                               saved as a run artifact for manual posting
+#                GH_ADMIN_TOKEN (optional) fine-grained GitHub token with "Secrets: read and write" on this
+#                               repo, so the 60-day Instagram token can renew itself
+name: reels
+
+on:
+  schedule:
+    - cron: "37 3,6,9,12,14,16 * * *"   # 09:07 12:07 15:07 18:07 20:07 22:07 IST
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: "Slot number from config.yaml (0-5); empty = nearest to now"
+        required: false
+      publish:
+        description: "Post to Instagram"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write   # to host the video as a release file
+  actions: read
+
+concurrency: reels   # never run two Reel jobs at once
+
+jobs:
+  reel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HAS_IG: ${{ secrets.IG_TOKEN != '' }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: pip install -r requirements.txt
+      - uses: actions/cache@v4
+        with:
+          path: models
+          key: piper-voices-v1
+      - name: Use Gemini
+        run: |
+          sed -i 's/^  provider: "ollama"/  provider: "gemini"/' config.yaml
+      - name: Make the Reel
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python run.py reel ${{ inputs.slot != '' && format('--slot {0}', inputs.slot) || '' }}
+      - name: Host the video (GitHub release file)
+        run: |
+          TAG="reel-${REEL_ID}-${GITHUB_RUN_ID}"
+          FILE="output/reels/${REEL_ID}/${TAG}.mp4"
+          cp "output/reels/${REEL_ID}/reel.mp4" "$FILE"
+          URLS=$(python -c "import json;print(json.dumps(json.load(open('output/reels/${REEL_ID}/meta.json'))['urls']))")
+          gh release create "$TAG" "$FILE" --prerelease --title "Reel ${REEL_ID}" \
+            --notes "Automated Reel. <!--urls:${URLS}-->"
+          echo "VIDEO_URL=https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${TAG}.mp4" >> "$GITHUB_ENV"
+      - name: Post to Instagram
+        if: env.HAS_IG == 'true' && (github.event_name == 'schedule' || inputs.publish)
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+        run: python run.py reel-publish --reel "$REEL_ID" --video-url "$VIDEO_URL"
+      - name: Renew the Instagram token
+        if: env.HAS_IG == 'true'
+        continue-on-error: true
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          ADMIN: ${{ secrets.GH_ADMIN_TOKEN }}
+        run: |
+          [ -z "$ADMIN" ] && { echo "No GH_ADMIN_TOKEN: renew IG_TOKEN by hand every ~50 days"; exit 0; }
+          NEW=$(python -c "from newsdesk.instagram import refresh_token;import os;print(refresh_token(os.environ['IG_TOKEN']) or '')")
+          [ -z "$NEW" ] && { echo "Token not renewed (allowed once a day)"; exit 0; }
+          echo "::add-mask::$NEW"
+          GH_TOKEN="$ADMIN" gh secret set IG_TOKEN --body "$NEW" --repo "$GITHUB_REPOSITORY"
+          echo "Instagram token renewed for another 60 days"
+      - name: Delete Reel releases older than 3 days
+        continue-on-error: true
+        run: |
+          CUTOFF=$(date -u -d '3 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          gh release list --limit 100 --json tagName,createdAt \
+            --jq ".[] | select(.tagName | startswith(\"reel-\")) | select(.createdAt < \"$CUTOFF\") | .tagName" |
+          while read -r tag; do gh release delete "$tag" --cleanup-tag --yes; done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reel
+          path: |
+            output/reels/*/reel.mp4
+            output/reels/*/caption.txt
+          retention-days: 3

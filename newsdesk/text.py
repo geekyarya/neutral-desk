@@ -45,10 +45,11 @@ class Font:
     def length(self, draw, text):
         return sum(draw.textlength(t, font=f) for t, f in self.runs(text))
 
-    def draw(self, draw, xy, text, fill):
+    def draw(self, draw, xy, text, fill, stroke=0, stroke_fill=None):
         x, y = xy
         for t, f in self.runs(text):
-            draw.text((x, y + self.ascent), t, font=f, fill=fill, anchor="ls")
+            draw.text((x, y + self.ascent), t, font=f, fill=fill, anchor="ls",
+                      stroke_width=stroke, stroke_fill=stroke_fill)
             x += draw.textlength(t, font=f)
 
 

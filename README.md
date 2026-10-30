@@ -98,6 +98,26 @@ The video uploads as **private**, and you approve it from the YouTube Studio pho
 - **YouTube limits:** the free API quota allows 6 uploads a day (1 bulletin + 5 Shorts). If the quota runs out, the remaining uploads are skipped and logged.
 - **Test runs:** under Actions → daily-episode → Run workflow, untick "Upload to YouTube" to test without posting.
 
+## 4c. Instagram Reels (6 a day)
+
+The `reels` workflow posts one 20–30 s vertical Reel at 09, 12, 15, 18, 20 and 22 IST. The mix is set under `reels.slots` in `config.yaml`:
+
+| Type | Content | Rules |
+|---|---|---|
+| `news` | A cross-checked story from today's news, a different one each slot | Facts need 3+ independent groups; everything else is attributed |
+| `mystery` | A famous real mystery from `reels.mystery_topics`, using Wikipedia text and a freely licensed Wikimedia photo | "What is documented" vs "the legend", with image credit in the caption |
+| `supernatural` | A current strange-claim news report found through Google News search | Always attributed and called unverified; never presented as true; no superstition "remedies" |
+
+If no suitable item exists, the slot posts a mystery instead. Instagram needs a public video URL, so each Reel is hosted as a GitHub release file, and releases older than 3 days are deleted automatically.
+
+**Setup (one time):**
+1. Switch the Instagram account to a **Professional → Business** account.
+2. At https://developers.facebook.com, create an app (type *Business*) and add the **Instagram** product, using *API setup with Instagram login*. Add your Instagram account and generate an **access token** with the `instagram_business_basic` and `instagram_business_content_publish` permissions.
+3. Save it as the repo secret `IG_TOKEN`.
+4. Optional, for automatic renewal: create a fine-grained GitHub token at https://github.com/settings/personal-access-tokens with access to this repo only and **Secrets: Read and write**, and save it as `GH_ADMIN_TOKEN`. Without it, generate a new `IG_TOKEN` every ~50 days.
+
+Without `IG_TOKEN`, each Reel is still made and saved under the run's *Artifacts* for manual posting.
+
 ## 5. Realistic AI anchor (optional)
 
 The built-in anchor is an illustrated character, so it works anywhere. For a photoreal talking face:

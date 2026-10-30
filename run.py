@@ -8,6 +8,8 @@
   python run.py upload            upload bulletin + Shorts to YouTube
   python run.py all [--upload]    script + video + shorts in one go
   python run.py weekly            Sunday week-in-review from the last 7 days' scripts -> output/week-<date>/
+  python run.py reel [--slot N]   one 20-30 s Instagram Reel for the current (or given) slot -> output/reels/<id>/
+  python run.py reel-publish --video-url URL [--reel ID]   post that Reel on Instagram
   python run.py auth              one-time YouTube login
   python run.py pack              zip face + voice files for colab/lipsync.ipynb (realistic anchor)
 """
@@ -90,6 +92,38 @@ def stage_weekly(cfg, a):
     return stage_video(cfg, d, ep)
 
 
+def stage_reel(cfg, a):
+    import os
+    from newsdesk.config import ROOT
+    from newsdesk.reel_render import render_reel
+    from newsdesk.reels import caption_text, ist_now, make_reel_content, pick_slot, used_urls_from_github
+    slot = pick_slot(cfg, a.slot)
+    slot_no = cfg["reels"]["slots"].index(slot)
+    reel_id = ist_now().strftime("%Y-%m-%d-") + f"{slot['hour']:02d}"
+    d = ROOT / "output" / "reels" / reel_id
+    d.mkdir(parents=True, exist_ok=True)
+    print(f"Reel {reel_id}: {slot['type']}")
+    used = used_urls_from_github()
+    for m in (ROOT / "output" / "reels").glob("*/meta.json"):  # local runs
+        used |= set(json.loads(m.read_text(encoding="utf-8")).get("urls", []))
+    content = make_reel_content(cfg, slot_no, d, used)
+    print(f"   {content['type']}: {content['title']}")
+    render_reel(content, cfg, d)
+    (d / "meta.json").write_text(json.dumps(content, indent=2, ensure_ascii=False), encoding="utf-8")
+    (d / "caption.txt").write_text(caption_text(content, cfg), encoding="utf-8")
+    if os.environ.get("GITHUB_ENV"):
+        with open(os.environ["GITHUB_ENV"], "a") as env:
+            env.write(f"REEL_ID={reel_id}\n")
+    print(f"Reel ready: {d / 'reel.mp4'}")
+
+
+def stage_reel_publish(cfg, a):
+    from newsdesk.config import ROOT
+    from newsdesk.instagram import publish_reel
+    d = ROOT / "output" / "reels" / a.reel
+    publish_reel(a.video_url, (d / "caption.txt").read_text(encoding="utf-8"), cfg)
+
+
 def stage_pack(cfg, d, ep):
     import zipfile
     from newsdesk.config import ROOT
@@ -109,14 +143,22 @@ def stage_pack(cfg, d, ep):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("stage", choices=["script", "audio", "video", "shorts", "upload", "all", "auth", "pack", "weekly"])
+    ap.add_argument("stage", choices=["script", "audio", "video", "shorts", "upload", "all", "auth", "pack", "weekly",
+                                       "reel", "reel-publish"])
     ap.add_argument("--date", help="episode date folder (default today)")
     ap.add_argument("--upload", action="store_true", help="with 'all': also upload")
     ap.add_argument("--config")
+    ap.add_argument("--slot", type=int, help="reel: slot number from config (default: nearest to now)")
+    ap.add_argument("--reel", help="reel-publish: reel id (output/reels/<id>)")
+    ap.add_argument("--video-url", help="reel-publish: public URL of the reel video")
     a = ap.parse_args()
     cfg = load_config(a.config)
     if a.stage == "weekly":
         return stage_weekly(cfg, a)
+    if a.stage == "reel":
+        return stage_reel(cfg, a)
+    if a.stage == "reel-publish":
+        return stage_reel_publish(cfg, a)
     d = episode_dir(a.date)
 
     if a.stage == "auth":

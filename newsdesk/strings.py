@@ -60,6 +60,11 @@ STRINGS = {
                         "groups. All sources are in the description. See you next week.",
         "weekly_yt_title": "The Week in News | {start} – {end}",
         "weekdays": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+        "reel_tags": {"news": "NEWS", "mystery": "MYSTERY", "supernatural": "STRANGE NEWS"},
+        "reel_outro": "Follow {name} for more.",
+        "reel_source": "Source",
+        "reel_disclosure": "Anchor, voice and script are AI-generated from the sources above. Claims about the "
+                           "supernatural are reported, not endorsed.",
     },
     "hi": {
         "llm_language": (
@@ -115,6 +120,11 @@ STRINGS = {
                         "सभी स्रोतों के लिंक डिस्क्रिप्शन में हैं। अगले हफ्ते फिर मिलेंगे, नमस्कार।",
         "weekly_yt_title": "हफ्ते की बड़ी खबरें | {start} – {end}",
         "weekdays": ["सोमवार", "मंगलवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार", "रविवार"],
+        "reel_tags": {"news": "खबर", "mystery": "रहस्य", "supernatural": "अजब-गजब खबर"},
+        "reel_outro": "ऐसी और कहानियों के लिए फॉलो करें {name}।",
+        "reel_source": "स्रोत",
+        "reel_disclosure": "एंकर, आवाज़ और स्क्रिप्ट ऊपर दिए स्रोतों से AI द्वारा बनाए गए हैं। अलौकिक दावे सिर्फ रिपोर्ट किए गए "
+                           "हैं, हम उनकी पुष्टि नहीं करते।",
     },
 }
 

@@ -108,3 +108,36 @@ shorts:
 # Sunday "week in review" (made from the week's daily scripts, no AI calls)
 weekly:
   max_stories: 18
+
+# Instagram Reels: one 20-30 s Reel per slot. Times are IST; the reels workflow runs at these hours.
+#   news         = a cross-checked story from today's news (a different one each news slot)
+#   mystery      = a famous real mystery, told as "what is known vs what is legend" (from Wikipedia)
+#   supernatural = a current "strange claim" news report, always attributed, never presented as true
+reels:
+  words: "45 to 60"           # ~20-30 s of Hindi speech at the configured speed
+  slots:
+    - {hour: 9,  type: news}
+    - {hour: 12, type: mystery}
+    - {hour: 15, type: news}
+    - {hour: 18, type: supernatural}
+    - {hour: 20, type: mystery}
+    - {hour: 22, type: news}
+  supernatural_query: '(ghost OR haunted OR paranormal OR UFO OR "black magic" OR exorcism OR tantrik OR mysterious OR "unexplained") India when:3d'
+  hashtags:
+    news: ["#hindinews", "#news", "#indianews", "#factcheck", "#zeromasala", "#reels"]
+    mystery: ["#mystery", "#rahasya", "#unsolvedmysteries", "#history", "#hindi", "#zeromasala", "#reels"]
+    supernatural: ["#ajabgajab", "#mystery", "#strangenews", "#hindinews", "#zeromasala", "#reels"]
+  # real, well-documented mysteries (English Wikipedia titles); rotated so they don't repeat for weeks
+  mystery_topics: [
+    "Roopkund", "Bhangarh Fort", "Kuldhara", "Jatinga", "Kodinhi", "Lonar Lake", "Iron pillar of Delhi",
+    "Kailasa temple, Ellora", "Adam's Bridge", "Shani Shingnapur", "Lepakshi", "Konark Sun Temple",
+    "Indus script", "Death of Subhas Chandra Bose", "Gumnami Baba", "Shaniwar Wada", "Agrasen ki Baoli",
+    "Dumas Beach", "Mohenjo-daro", "Dyatlov Pass incident", "Bermuda Triangle", "Voynich manuscript",
+    "Mary Celeste", "Nazca Lines", "Tunguska event", "Wow! signal", "Oak Island", "Taos Hum",
+    "Phaistos Disc", "Antikythera mechanism", "Stonehenge", "Göbekli Tepe", "Hessdalen lights",
+    "Marfa lights", "Ball lightning", "Loch Ness Monster", "Yeti", "Flannan Isles", "Amelia Earhart",
+    "Baghdad Battery", "Sailing stones", "Plain of Jars", "Rongorongo", "Kryptos",
+    "Dancing plague of 1518", "Green children of Woolpit", "Bloop", "Easter Island"]
+
+instagram:
+  api_version: "v23.0"
