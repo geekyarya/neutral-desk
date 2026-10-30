@@ -90,7 +90,23 @@ def _verify(result, story, k):
     return confirmed, disputed[:3]
 
 
-def _package(res, story, k):
+def _fix_spelling(res, fixes):
+    def fix(text):
+        for wrong, right in fixes.items():
+            text = text.replace(wrong, right)
+        return text
+    for key in ("headline", "script", "short_script"):
+        if res.get(key):
+            res[key] = fix(str(res[key]))
+    for f in res.get("confirmed_facts") or []:
+        f["fact"] = fix(f.get("fact", ""))
+    for d in res.get("disputed") or []:
+        d["claim"] = fix(d.get("claim", ""))
+    return res
+
+
+def _package(res, story, k, fixes=None):
+    res = _fix_spelling(res, fixes or {})
     confirmed, disputed = _verify(res, story, k)
     return {"headline": res["headline"].strip(), "script": res["script"].strip(),
             "short_script": str(res.get("short_script") or "").strip(),
@@ -103,6 +119,7 @@ def _edit_with_llm(story, cfg):
     prompt = PROMPT.format(n=len(story["articles"]), k=k, words="90 to 130", short_words="60 to 80",
                            language=T(cfg)["llm_language"], reports=_reports_text(story))
     lang = cfg["channel"]["language"]
+    fixes = cfg["editor"].get("spelling_fixes") or {}
     last, messy = None, None
     for _ in range(2):
         try:
@@ -114,11 +131,11 @@ def _edit_with_llm(story, cfg):
             continue
         stray = _stray(_all_text(res), lang)
         if not stray:
-            return _package(res, story, k)
+            return _package(res, story, k, fixes)
         messy, last = res, f"stray characters {''.join(sorted(set(stray)))}"  # ask again; usually clean
     if messy:  # still messy after the retry: strip the junk characters
         print(f"   ↳ removed {last}")
-        return _package(_clean(messy, lang), story, k)
+        return _package(_clean(messy, lang), story, k, fixes)
     raise RuntimeError(f"LLM failed for story '{story['articles'][0]['title']}': {last}")
 
 

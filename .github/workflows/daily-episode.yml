@@ -17,6 +17,11 @@ on:
         description: "Upload to YouTube"
         type: boolean
         default: true
+      llm:
+        description: "Writer (test the backup with ollama)"
+        type: choice
+        options: [gemini, ollama]
+        default: gemini
 
 jobs:
   episode:
@@ -52,9 +57,10 @@ jobs:
           sleep 5
           ollama pull "$(python -c "import yaml;print(yaml.safe_load(open('config.yaml'))['llm']['fallback_ollama_model'])")"
 
-      - name: Use Gemini on the runner
+      - name: Choose the writer (Gemini by default)
         run: |
-          sed -i 's/^  provider: "ollama"/  provider: "gemini"/' config.yaml
+          sed -i "s/^  provider: \"ollama\"/  provider: \"${{ inputs.llm || 'gemini' }}\"/" config.yaml
+          sed -i 's/^  ollama_model: .*/  ollama_model: "gemma3:4b"/' config.yaml
           grep -n 'provider:' config.yaml
       - name: Make bulletin + Shorts
         env:

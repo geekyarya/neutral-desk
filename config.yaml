@@ -20,6 +20,9 @@ editor:
   fetch_full_text: true     # download article text (better facts, slower)
   max_articles_per_story: 8
   cluster_distance: 0.85    # lower = stricter grouping of articles into one story
+  # spelling mistakes the AI keeps making: "wrong": "right" (applied to all text, screen and voice)
+  spelling_fixes:
+    "जलडममध्य": "जलडमरूमध्य"
 
 # Free LLM. provider: ollama (local, unlimited) | gemini (free API key) | none (English only, no AI)
 # For Hindi, Gemini or a Gemma model writes the best Hindi.
