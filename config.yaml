@@ -51,7 +51,7 @@ video:
   fps: 25
 
 youtube:
-  privacy: "private"         # upload private -> review in YouTube Studio -> publish
+  privacy: "public"          # publish immediately (use "private" to review before publishing)
   category_id: "25"          # News & Politics
   tags: ["hindi news", "हिंदी समाचार", "आज की ताजा खबर", "india news", "unbiased news", "fact check"]
 

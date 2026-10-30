@@ -1,6 +1,6 @@
 # Free daily automation on GitHub Actions (free for public repos; ~2000 min/month on private).
 # Makes the Hindi episode with Gemini (free tier, best Hindi) + Piper voice + puppet anchor, uploads it to YouTube
-# as PRIVATE so a human reviews it in YouTube Studio before publishing.
+# and publishes it (privacy is set in config.yaml).
 #
 # Repo secrets needed:  GEMINI_API_KEY
 #                       YT_TOKEN (optional) = {"client_id": ..., "client_secret": ..., "refresh_token": ...,
@@ -38,7 +38,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python run.py all
-      - name: Upload to YouTube (private)
+      - name: Upload to YouTube
         if: env.HAS_YT == 'true'
         env:
           YT_TOKEN: ${{ secrets.YT_TOKEN }}
