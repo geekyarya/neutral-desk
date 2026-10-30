@@ -66,6 +66,18 @@ def _stray(text, lang):
     return re.findall(f"[^{ALLOWED.get(lang, ALLOWED['hi'])}]", text)
 
 
+def wrong_language(res, lang, keys=("headline", "script")):
+    """True if Hindi output is mostly not in Devanagari (small models often slip into English)."""
+    if lang != "hi":
+        return False
+    for key in keys:
+        letters = [c for c in str(res.get(key) or "") if c.isalpha()]
+        deva = sum("\u0900" <= c <= "\u097F" for c in letters)
+        if letters and deva / len(letters) < 0.6:
+            return True
+    return False
+
+
 def _all_text(res):
     parts = [res.get("headline", ""), res.get("script", ""), str(res.get("short_script") or ""),
              str(res.get("public_reaction") or "")]
@@ -148,6 +160,10 @@ def _edit_with_llm(story, cfg):
             continue
         if not (res.get("script") and res.get("headline")):
             continue
+        facts = " ".join(str(f.get("fact", "")) for f in res.get("confirmed_facts") or [])
+        if wrong_language({**res, "facts": facts}, lang, ("headline", "script", "facts")):
+            last = "answer was not in the episode's language"
+            continue  # never fall back to a wrong-language answer
         stray = _stray(_all_text(res), lang)
         if not stray:
             return _package(res, story, k, fixes)

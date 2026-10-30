@@ -13,7 +13,7 @@ import feedparser
 import requests
 
 from .cluster import cluster_stories
-from .editor import _clean, _fix_spelling, _reports_text, _stray
+from .editor import _clean, _fix_spelling, _reports_text, _stray, wrong_language
 from .fetch import fetch_all, fetch_full_text
 from .llm import complete_json
 from .strings import T
@@ -83,8 +83,10 @@ def _lang(cfg):
 
 
 def _finish(res, cfg):
-    """Spelling fixes + strip stray foreign-script characters."""
+    """Spelling fixes + strip stray foreign-script characters; empty script if in the wrong language."""
     lang = cfg["channel"]["language"]
+    if wrong_language(res, lang, ("title", "script")):
+        return {**res, "title": "", "script": "", "caption": ""}
     res = _fix_spelling(res, cfg["editor"].get("spelling_fixes") or {})
     for key in ("title", "script", "caption"):
         res[key] = str(res.get(key) or "").strip()
