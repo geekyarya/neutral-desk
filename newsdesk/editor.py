@@ -5,6 +5,7 @@ independent media groups report it. Everything else is attributed
 ("according to X") or labelled as not independently confirmed.
 """
 import datetime as dt
+import re
 from concurrent.futures import ThreadPoolExecutor
 
 from .fetch import fetch_full_text
@@ -44,6 +45,33 @@ def _reports_text(story):
     return "\n\n".join(parts)
 
 
+# characters allowed in LLM text: Latin/punctuation/₹ for every language, plus Devanagari for Hindi
+ALLOWED = {"en": r"\u0000-\u024F\u2000-\u206F\u20B9", "hi": r"\u0000-\u024F\u2000-\u206F\u20B9\u0900-\u097F"}
+
+
+def _stray(text, lang):
+    """Characters from unexpected scripts, e.g. Japanese kana that an LLM slipped into a Hindi word."""
+    return re.findall(f"[^{ALLOWED.get(lang, ALLOWED['hi'])}]", text)
+
+
+def _all_text(res):
+    parts = [res.get("headline", ""), res.get("script", "")]
+    parts += [f.get("fact", "") for f in res.get("confirmed_facts") or []]
+    parts += [d.get("claim", "") for d in res.get("disputed") or []]
+    return " ".join(str(p) for p in parts)
+
+
+def _clean(res, lang):
+    bad = f"[^{ALLOWED.get(lang, ALLOWED['hi'])}]"
+    fix = lambda t: re.sub(bad, "", t)
+    res["headline"], res["script"] = fix(res["headline"]), fix(res["script"])
+    for f in res.get("confirmed_facts") or []:
+        f["fact"] = fix(f.get("fact", ""))
+    for d in res.get("disputed") or []:
+        d["claim"] = fix(d.get("claim", ""))
+    return res
+
+
 def _verify(result, story, k):
     """Don't trust the LLM blindly: re-check that each 'confirmed' fact cites >= k real outlets."""
     real = {a["outlet"] for a in story["articles"]}
@@ -59,21 +87,34 @@ def _verify(result, story, k):
     return confirmed, disputed[:3]
 
 
+def _package(res, story, k):
+    confirmed, disputed = _verify(res, story, k)
+    return {"headline": res["headline"].strip(), "script": res["script"].strip(),
+            "about_india": bool(res.get("about_india", True)),
+            "confirmed_facts": confirmed, "disputed": disputed}
+
+
 def _edit_with_llm(story, cfg):
     k = min(cfg["editor"]["confirm_threshold"], story["n_outlets"])
     prompt = PROMPT.format(n=len(story["articles"]), k=k, words="90 to 130",
                            language=T(cfg)["llm_language"], reports=_reports_text(story))
-    last = None
+    lang = cfg["channel"]["language"]
+    last, messy = None, None
     for _ in range(2):
         try:
             res = complete_json(cfg, prompt)
-            if res.get("script") and res.get("headline"):
-                confirmed, disputed = _verify(res, story, k)
-                return {"headline": res["headline"].strip(), "script": res["script"].strip(),
-                        "about_india": bool(res.get("about_india", True)),
-                        "confirmed_facts": confirmed, "disputed": disputed}
         except Exception as e:
             last = e
+            continue
+        if not (res.get("script") and res.get("headline")):
+            continue
+        stray = _stray(_all_text(res), lang)
+        if not stray:
+            return _package(res, story, k)
+        messy, last = res, f"stray characters {''.join(sorted(set(stray)))}"  # ask again; usually clean
+    if messy:  # still messy after the retry: strip the junk characters
+        print(f"   ↳ removed {last}")
+        return _package(_clean(messy, lang), story, k)
     raise RuntimeError(f"LLM failed for story '{story['articles'][0]['title']}': {last}")
 
 
