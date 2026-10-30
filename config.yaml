@@ -1,0 +1,95 @@
+# ---------------------------------------------------------------
+#  Neutral Desk - configuration
+#  Everything here is free. Edit and re-run.
+# ---------------------------------------------------------------
+
+channel:
+  name: "Neutral Desk"               # shown on screen
+  spoken_name: "न्यूट्रल डेस्क"        # how the anchor says it (write in the episode's language)
+  tagline: "निष्पक्ष खबर, कई स्रोतों से जांची हुई"
+  language: "hi"                     # hi = Hindi, en = English
+
+# How stories are chosen and checked
+editor:
+  hours_back: 30            # only use articles newer than this
+  india_stories: 5          # Indian stories per episode
+  world_stories: 1          # world stories per episode
+  min_outlets: 3            # a story needs this many INDEPENDENT media groups (same owner = 1)
+  world_min_countries: 2    # world stories must also be covered from this many countries
+  confirm_threshold: 3      # a fact is "confirmed" only if this many independent groups state it
+  fetch_full_text: true     # download article text (better facts, slower)
+  max_articles_per_story: 8
+  cluster_distance: 0.85    # lower = stricter grouping of articles into one story
+
+# Free LLM. provider: ollama (local, unlimited) | gemini (free API key) | none (English only, no AI)
+# For Hindi, Gemini or a Gemma model writes the best Hindi.
+llm:
+  provider: "ollama"
+  ollama_host: "http://localhost:11434"
+  ollama_model: "gemma3:12b"        # needs ~16 GB RAM; weak PC: gemma3:4b
+  gemini_model: "gemini-2.5-flash"  # key from env GEMINI_API_KEY (aistudio.google.com, free)
+  temperature: 0.2
+
+# Free offline voice (Piper). Hindi voices: hi_IN-rohan-medium (male), hi_IN-pratham-medium (male),
+# hi_IN-priyamvada-medium (female). English: en/en_US/ryan/medium/en_US-ryan-medium
+tts:
+  voice: "hi/hi_IN/rohan/medium/hi_IN-rohan-medium"
+  length_scale: 0.8          # speed: 0.8 = 1.25x faster, 1.0 = normal, >1 slower
+  pause_after_segment: 0.6   # seconds
+
+# Anchor: "puppet" = built-in animated anchor (CPU, no setup)
+#         "lipsync" = realistic face from Colab (see colab/lipsync.ipynb)
+anchor:
+  mode: "puppet"
+  face_image: "assets/anchor_face.png"   # used only for lipsync mode
+
+video:
+  width: 1280
+  height: 720
+  fps: 25
+
+youtube:
+  privacy: "private"         # upload private -> review in YouTube Studio -> publish
+  category_id: "25"          # News & Politics
+  tags: ["hindi news", "हिंदी समाचार", "आज की ताजा खबर", "india news", "unbiased news", "fact check"]
+
+# News sources.
+#   owner:   media group. Outlets with the same owner count as ONE source (they aren't independent).
+#   section: india = Indian news desk, world = international desk.
+# Keep Indian outlets from across the editorial spectrum so no single line dominates.
+feeds:
+  # --- Indian outlets ---
+  - {name: "The Hindu",          owner: "The Hindu Group",     country: "India", section: india, url: "https://www.thehindu.com/news/national/feeder/default.rss"}
+  - {name: "BusinessLine",       owner: "The Hindu Group",     country: "India", section: india, url: "https://www.thehindubusinessline.com/news/national/feeder/default.rss"}
+  - {name: "Indian Express",     owner: "Indian Express Group", country: "India", section: india, url: "https://indianexpress.com/section/india/feed/"}
+  - {name: "Times of India",     owner: "Times Group",         country: "India", section: india, url: "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms"}
+  - {name: "TOI Top Stories",    owner: "Times Group",         country: "India", section: india, url: "https://timesofindia.indiatimes.com/rssfeedstopstories.cms"}
+  - {name: "Economic Times",     owner: "Times Group",         country: "India", section: india, url: "https://economictimes.indiatimes.com/news/india/rssfeeds/81582957.cms"}
+  - {name: "Hindustan Times",    owner: "HT Media",            country: "India", section: india, url: "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml"}
+  - {name: "Mint",               owner: "HT Media",            country: "India", section: india, url: "https://www.livemint.com/rss/news"}
+  - {name: "NDTV",               owner: "NDTV",                country: "India", section: india, url: "https://feeds.feedburner.com/ndtvnews-india-news"}
+  - {name: "NDTV Top Stories",   owner: "NDTV",                country: "India", section: india, url: "https://feeds.feedburner.com/ndtvnews-top-stories"}
+  - {name: "India Today",        owner: "India Today Group",   country: "India", section: india, url: "https://www.indiatoday.in/rss/1206578"}
+  - {name: "India Today Home",   owner: "India Today Group",   country: "India", section: india, url: "https://www.indiatoday.in/rss/home"}
+  - {name: "India TV",           owner: "India TV",            country: "India", section: india, url: "https://www.indiatvnews.com/rssnews/topstory-india.xml"}
+  - {name: "Business Standard",  owner: "Business Standard",   country: "India", section: india, url: "https://www.business-standard.com/rss/home_page_top_stories.rss"}
+  - {name: "Deccan Chronicle",   owner: "Deccan Chronicle",    country: "India", section: india, url: "https://www.deccanchronicle.com/google_feeds.xml"}
+  - {name: "Free Press Journal", owner: "Free Press Journal",  country: "India", section: india, url: "https://www.freepressjournal.in/stories.rss"}
+  - {name: "Scroll",             owner: "Scroll",              country: "India", section: india, url: "https://feeds.feedburner.com/ScrollinArticles.rss"}
+  - {name: "National Herald",    owner: "National Herald",     country: "India", section: india, url: "https://www.nationalheraldindia.com/stories.rss"}
+  - {name: "OpIndia",            owner: "OpIndia",             country: "India", section: india, url: "https://www.opindia.com/feed/"}
+  - {name: "Organiser",          owner: "Organiser",           country: "India", section: india, url: "https://organiser.org/feed/"}
+  # --- foreign outlets covering India (outside view on Indian stories) ---
+  - {name: "BBC India",          owner: "BBC",                 country: "UK",    section: india, url: "https://feeds.bbci.co.uk/news/world/asia/india/rss.xml"}
+  # --- world desk ---
+  - {name: "The Hindu Intl",     owner: "The Hindu Group",     country: "India",     section: world, url: "https://www.thehindu.com/news/international/feeder/default.rss"}
+  - {name: "BBC",                owner: "BBC",                 country: "UK",        section: world, url: "https://feeds.bbci.co.uk/news/world/rss.xml"}
+  - {name: "The Guardian",       owner: "Guardian Media",      country: "UK",        section: world, url: "https://www.theguardian.com/world/rss"}
+  - {name: "New York Times",     owner: "NYT",                 country: "USA",       section: world, url: "https://rss.nytimes.com/services/xml/rss/nyt/World.xml"}
+  - {name: "Al Jazeera",         owner: "Al Jazeera",          country: "Qatar",     section: world, url: "https://www.aljazeera.com/xml/rss/all.xml"}
+  - {name: "DW",                 owner: "DW",                  country: "Germany",   section: world, url: "https://rss.dw.com/rdf/rss-en-all"}
+  - {name: "France 24",          owner: "France 24",           country: "France",    section: world, url: "https://www.france24.com/en/rss"}
+  - {name: "Japan Times",        owner: "Japan Times",         country: "Japan",     section: world, url: "https://www.japantimes.co.jp/feed/"}
+  - {name: "CNA",                owner: "Mediacorp",           country: "Singapore", section: world, url: "https://www.channelnewsasia.com/rssfeeds/8395884"}
+  - {name: "Dawn",               owner: "Dawn Group",          country: "Pakistan",  section: world, url: "https://www.dawn.com/feeds/home"}
+  - {name: "Kathmandu Post",     owner: "Kantipur",            country: "Nepal",     section: world, url: "https://kathmandupost.com/rss"}
