@@ -28,6 +28,8 @@ llm:
   ollama_host: "http://localhost:11434"
   ollama_model: "gemma3:12b"        # needs ~16 GB RAM; weak PC: gemma3:4b
   gemini_model: "gemini-flash-latest"  # always the newest free Flash model; key from env GEMINI_API_KEY (aistudio.google.com, free)
+  gemini_fallback_models: ["gemini-flash-lite-latest"]  # used if the main model is overloaded/retired
+  gemini_min_interval: 6            # seconds between calls (free-tier rate limit)
   temperature: 0.2
 
 # Free offline voice (Piper). Hindi voices: hi_IN-rohan-medium (male), hi_IN-pratham-medium (male),

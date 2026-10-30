@@ -112,7 +112,11 @@ def build_episode(candidates, cfg):
             if got >= want:
                 break
             print(f"Editing [{s['section']}]: {s['articles'][0]['title'][:70]}")
-            out = _edit_with_llm(s, cfg) if use_llm else _edit_without_llm(s)
+            try:
+                out = _edit_with_llm(s, cfg) if use_llm else _edit_without_llm(s)
+            except RuntimeError as e:  # one failed story shouldn't kill the whole episode
+                print(f"   ↳ skipped: {e}")
+                continue
             if s["section"] == "india" and not out.pop("about_india"):
                 print("   ↳ skipped: not about India")
                 continue
@@ -120,6 +124,8 @@ def build_episode(candidates, cfg):
             picked.append((s, out))
             got += 1
 
+    if not picked:
+        raise SystemExit("No story could be written (LLM unavailable). Try again later.")
     segments = []
     for i, (s, out) in enumerate(picked, 1):
         segments.append({
