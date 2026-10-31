@@ -1,4 +1,5 @@
 """Render a 1080x1920 Reel: hook title, big spoken captions, and either a slowly zooming photo or the anchor."""
+import math
 import re
 from pathlib import Path
 
@@ -7,7 +8,8 @@ from PIL import Image, ImageDraw, ImageOps
 
 from . import anchor as anchor_mod
 from .persona import persona
-from .render import ACCENT, AMBER, BG_BOTTOM, BG_TOP, GREEN, WHITE, encode
+from .render import ACCENT, AMBER, BG_BOTTOM, BG_TOP, GREEN, WHITE, _cover, _kenburns, _pip_sprites, _VideoReader, encode
+from .sound import mix
 from .strings import T
 from .text import Font, wrap
 from .tts import Speaker, read_wav
@@ -70,8 +72,6 @@ def _overlay(cfg, content, f):
     for line in wrap(d, content["title"], f["title"], W - 88, 3):
         f["title"].draw(d, (44, y), line, WHITE, 4, (0, 0, 0))
         y += 100
-    if content.get("credit"):
-        f["credit"].draw(d, (44, H - 70), content["credit"][:90], (200, 200, 200), 2, (0, 0, 0))
     return img
 
 
@@ -84,27 +84,46 @@ def render_reel(content, cfg, out_dir):
     outro = t["reel_outro"].format(name=name)
     wav = out_dir / "voice.wav"
     speaker = Speaker(cfg)
-    speaker.say(f"{content['script']} {outro}", wav, 0.5, "angry" if content.get("angry") else "calm")
+    angry = bool(content.get("angry"))
+    speaker.say(f"{content['script']} {outro}", wav, 0.5, "angry" if angry else "calm")
     audio, sr = read_wav(wav)
     n = int(len(audio) / sr * FPS)
     chunks = caption_chunks(f"{content['script']} {outro}")
     which = _timeline(chunks, len(audio) / sr - 0.5, n)
+    mixed = out_dir / "voice_music.wav"  # light music under the voice
+    _write_wav(mixed, mix(audio, sr, [], 0.10, "calm"), sr)
 
     overlay = _overlay(cfg, content, f)
-    photo = content.get("image")
-    if photo:
-        src = ImageOps.fit(Image.open(photo).convert("RGB"), (int(W * 1.18), int(H * 1.18)), Image.LANCZOS)
+    pz = persona(cfg)
+    media = content.get("media") or []
+    items = []
+    for m in media:
+        try:
+            if m["type"] == "video":
+                items.append(("video", m["path"], m.get("credit")))
+            else:
+                items.append(("img", _cover(Image.open(m["path"]), int(W * 1.15), int(H * 1.15)), m.get("credit")))
+        except OSError:
+            pass
+    mouths = anchor_mod.mouth_track(audio, sr, FPS)
+    blinks = anchor_mod.blink_track(n, FPS)
+    if items:
         shade = _shade()
-        cap_y = 1180
+        cap_y = 1080
+        pip = None
+        if content["type"] != "mystery":  # Babbar Bhai in a round corner window over the news visuals
+            face_y = 0.52 if pz["character"] == "lion" else None
+            sp = anchor_mod.sprites(420, 520, pz["character"], cool=not angry)
+            pip = _pip_sprites(sp, 330, face_y)
+            pip_pos = (W - 342 - 36, H - 342 - 70)
     else:
         base = _gradient()
         ah = 820
         aw = int(ah * 420 / 520)
-        sprites = anchor_mod.sprites(aw, ah, persona(cfg)["character"])
+        sprites = anchor_mod.sprites(aw, ah, pz["character"], cool=not angry)
         pos = ((W - aw) // 2, H - ah - 60)
-        mouths = anchor_mod.mouth_track(audio, sr, FPS)
-        blinks = anchor_mod.blink_track(n, FPS)
         cap_y = 640
+    readers = {}
 
     cap_cache = {}
 
@@ -125,18 +144,33 @@ def render_reel(content, cfg, out_dir):
 
     def frame_rgb(i):
         ci = int(which[i])
-        if photo:  # slow zoom-in with a gentle drift (Ken Burns)
-            p = i / max(1, n - 1)
-            z = 1.0 + 0.12 * p
-            cw, ch = int(src.width / z), int(src.height / z)
-            x0 = int((src.width - cw) * (0.5 + 0.2 * (p - 0.5)))
-            y0 = int((src.height - ch) * 0.5)
-            img = src.crop((x0, y0, x0 + cw, y0 + ch)).resize((W, H), Image.BILINEAR).convert("RGBA")
+        mouth, blink = int(mouths[min(i, len(mouths) - 1)]), bool(blinks[i])
+        if items:  # news photos (slow zoom) and video clips fill the screen, one after another
+            slot = n / len(items)
+            k = min(int(i / slot), len(items) - 1)
+            p = (i - k * slot) / slot
+            kind, src, credit = items[k]
+            if kind == "video":
+                if k not in readers:
+                    for rd in readers.values():
+                        rd.close()
+                    readers.clear()
+                    readers[k] = _VideoReader(src, W, H, FPS)
+                img = readers[k].read()
+            else:
+                img = _kenburns(src, p, W, H, k % 2 == 1)
+            img = img.convert("RGBA")
             img.alpha_composite(shade)
             img.alpha_composite(overlay)
             img.alpha_composite(caption_layer(ci))
+            if credit:
+                d = ImageDraw.Draw(img)
+                f["credit"].draw(d, (44, H - 52), (("Video: " if kind == "video" else "Photo: ") + credit)[:80],
+                                 (220, 220, 220), 2, (0, 0, 0))
+            if pip:
+                img.alpha_composite(pip[(mouth, blink)], (pip_pos[0], pip_pos[1] + int(6 * math.sin(i / 7))))
         else:
-            key = (int(mouths[min(i, len(mouths) - 1)]), bool(blinks[i]), ci)
+            key = (mouth, blink, ci)
             if key not in frame_cache:
                 img = base.copy()
                 img.alpha_composite(sprites[key[:2]], pos)
@@ -151,6 +185,18 @@ def render_reel(content, cfg, out_dir):
         return img.tobytes()
 
     out = out_dir / "reel.mp4"
-    encode(frame_rgb, n, W, H, FPS, wav, out)
+    encode(frame_rgb, n, W, H, FPS, mixed, out)
+    for rd in readers.values():
+        rd.close()
     wav.unlink()
+    mixed.unlink()
     return out
+
+
+def _write_wav(path, audio, sr):
+    import wave
+    with wave.open(str(path), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(sr)
+        w.writeframes(audio.tobytes())

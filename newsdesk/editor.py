@@ -36,8 +36,9 @@ Return JSON with exactly these keys:
   Do not greet or sign off.
 - "mood": "good" (achievements, relief, progress), "bad" (war, attacks, deaths, scams, failures, crises) or
   "neutral".
-- "angry": true if this story would make ordinary viewers angry (corruption, scams, negligence that hurt people,
-  broken promises, lame official excuses, injustice, attacks on the country, price rises); false otherwise.
+- "angry": true ONLY if the reports describe clear wrongdoing that would make ordinary viewers angry: corruption,
+  scams, negligence that hurt people, broken promises, injustice, attacks on the country. false for ordinary
+  politics and speeches, weather, disasters without negligence, science, sport, business and achievements.
 - "image_queries": 2 or 3 short English photo-search phrases for this story (e.g. "Ramlila Maidan rally",
   "Arunachal Pradesh border", "GSLV rocket launch"). Places, events, objects; never private individuals.
 - "why_it_matters": one line, max 15 words, the practical significance of the story, only as far as the reports

@@ -118,8 +118,17 @@ def render_short(seg, cfg, speaker, out_dir):
         return img.tobytes()
 
     out = shorts_dir / f"{seg['id']}.mp4"
-    encode(frame_rgb, n, W, H, FPS, wav, out)
+    from .sound import mix
+    import wave
+    mixed = shorts_dir / f"{seg['id']}-music.wav"
+    with wave.open(str(mixed), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(sr)
+        w.writeframes(mix(audio, sr, [], 0.10, "calm").tobytes())
+    encode(frame_rgb, n, W, H, FPS, mixed, out)
     wav.unlink()
+    mixed.unlink()
     return {"file": str(out.relative_to(out_dir)), "duration": duration}
 
 

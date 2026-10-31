@@ -74,8 +74,23 @@ def cluster_stories(articles, cfg):
                       + ed.get("hot_weight", 0) * min(s["hot_hits"], 2))
     india.sort(key=lambda s: (s["score"], s["foreign"]), reverse=True)
     world.sort(key=lambda s: (s["score"], len(s["countries"])), reverse=True)
+    india, world = _drop_repeats(india), _drop_repeats(world)
     # extra India candidates: the editor drops ones that turn out not to be about India
     return india[: ed["india_stories"] + 4], world[: ed["world_stories"] + 1]
+
+
+def _drop_repeats(stories, threshold=0.3):
+    """Two angles on the same event (e.g. 'rally on Nov 1' and 'demand to postpone the rally'): keep the top one."""
+    if len(stories) < 2:
+        return stories
+    texts = [_story_text(s["articles"]) for s in stories]
+    X = TfidfVectorizer(stop_words="english", sublinear_tf=True).fit_transform(texts)
+    sim = (X @ X.T).toarray()
+    kept = []
+    for i in range(len(stories)):
+        if all(sim[i, j] < threshold for j in kept):
+            kept.append(i)
+    return [stories[i] for i in kept]
 
 
 def _hot(story, words):

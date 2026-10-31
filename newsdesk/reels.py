@@ -11,6 +11,7 @@ import re
 
 import feedparser
 import requests
+from pathlib import Path
 
 from .cluster import cluster_stories
 from .editor import _clean, _fix_spelling, _reports_text, _stray, wrong_language
@@ -30,10 +31,16 @@ COMMON_RULES = """Return JSON with these keys:
 - "caption": Instagram caption, 2-3 short sentences in {language_short}, no hashtags.
 """
 
+extra_keys = """- "angry": true only if the reports describe clear wrongdoing, negligence that hurt people, corruption or
+  injustice; false for ordinary politics, weather, science, sport and achievements.
+- "visuals": 2-3 English Wikipedia article titles that illustrate it (places, institutions, landmarks, public figures).
+- "image_queries": 2-3 short English photo-search phrases for it (places, events, objects; never private people).
+"""
+
 NEWS_PROMPT = """You write 20-30 second news Reels for a strictly neutral channel. Below are {n} reports of the
 SAME event from independently owned outlets. State as fact only what at least {k} outlets report; attribute
 anything else ("according to NDTV..."). No opinions, no emotional words, no speculation.
-""" + COMMON_RULES + """- "about_india": true if the event is in India or directly involves India/Indians.
+""" + COMMON_RULES + extra_keys + """- "about_india": true if the event is in India or directly involves India/Indians.
 If PUBLIC REACTION posts are given, end the script with ONE sentence on the range of opinions, clearly framed as
 opinion ("सोशल मीडिया पर कुछ लोगों का कहना है ..., तो कुछ ..."), no usernames, nothing hateful.
 
@@ -60,7 +67,7 @@ person or child. If none qualifies, return {{"index": -1}}.
 Otherwise also write the Reel: attribute every claim to the outlet ("according to ..."), say clearly that the
 claim is not verified, and mention any rational explanation or official response given in the report. Never
 present the supernatural as real and never encourage superstition or "remedies".
-""" + COMMON_RULES + """- "index": the number of the chosen item.
+""" + COMMON_RULES + extra_keys + """- "index": the number of the chosen item.
 
 HEADLINES:
 {items}
@@ -102,7 +109,27 @@ def _finish(res, cfg):
 
 # ---------------- news ----------------
 
-def make_news(cfg, used_urls):
+def _media_for(res, out_dir, prefix):
+    """News photos (Wikipedia + Openverse) and, if one exists, a free video clip, for a Reel."""
+    from .media import commons_video, openverse_images, topic_images
+    folder = Path(out_dir)
+    imgs = topic_images(res.get("visuals") or [], folder, prefix, limit=2)
+    for q in res.get("image_queries") or []:
+        if len(imgs) >= 4:
+            break
+        imgs += openverse_images(q, folder, f"{prefix}-{len(imgs)}")
+    video = None
+    for q in (res.get("image_queries") or [])[:2]:
+        video = commons_video(q, folder, prefix, seconds=8)
+        if video:
+            break
+    media = [{"type": "video", "path": video["path"], "credit": video["credit"]}] if video else []
+    media += [{"type": "img", "path": m["path"], "credit": m["credit"]} for m in imgs]
+    print(f"   visuals: {len(imgs)} photos, {1 if video else 0} video")
+    return media
+
+
+def make_news(cfg, used_urls, out_dir=None):
     india, world = cluster_stories(fetch_all(cfg), cfg)
     k = cfg["editor"]["confirm_threshold"]
     for story in india + world:
@@ -124,7 +151,8 @@ def make_news(cfg, used_urls):
             continue
         outlets = list(dict.fromkeys(a["outlet"] for a in story["articles"]))
         res.update(type="news", urls=sorted(urls), sources=outlets, image=None, credit=None,
-                   chip=T(cfg)["reported_by"].format(n=story["n_outlets"]))
+                   chip=T(cfg)["reported_by"].format(n=story["n_outlets"]),
+                   media=_media_for(res, out_dir, "news") if out_dir else [])
         return res
     return None
 
@@ -190,14 +218,15 @@ def make_mystery(cfg, out_dir, slot_no):
             except requests.RequestException:
                 pass
         url = "https://en.wikipedia.org/wiki/" + page["title"].replace(" ", "_")
-        res.update(type="mystery", urls=[url], sources=["Wikipedia"], image=image, credit=credit, chip=None)
+        res.update(type="mystery", urls=[url], sources=["Wikipedia"], image=image, credit=credit, chip=None,
+                   media=[{"type": "img", "path": image, "credit": credit}] if image else [])
         return res
     return None
 
 
 # ---------------- strange-claim news ----------------
 
-def make_supernatural(cfg, used_urls):
+def make_supernatural(cfg, used_urls, out_dir=None):
     r = requests.get("https://news.google.com/rss/search", timeout=30, params={
         "q": cfg["reels"]["supernatural_query"], "hl": "en-IN", "gl": "IN", "ceid": "IN:en"})
     entries = [e for e in feedparser.parse(r.content).entries if e.link not in used_urls][:20]
@@ -214,15 +243,16 @@ def make_supernatural(cfg, used_urls):
         return None
     e = entries[idx]
     source = (e.get("source") or {}).get("title") or e.title.rsplit(" - ", 1)[-1]
-    res.update(type="supernatural", urls=[e.link], sources=[source], image=None, credit=None, chip=None)
+    res.update(type="supernatural", urls=[e.link], sources=[source], image=None, credit=None, chip=None,
+               media=_media_for(res, out_dir, "strange") if out_dir else [])
     return res
 
 
 def make_reel_content(cfg, slot_no, out_dir, used_urls):
     kind = cfg["reels"]["slots"][slot_no]["type"]
-    makers = {"news": lambda: make_news(cfg, used_urls),
+    makers = {"news": lambda: make_news(cfg, used_urls, out_dir),
               "mystery": lambda: make_mystery(cfg, out_dir, slot_no),
-              "supernatural": lambda: make_supernatural(cfg, used_urls)}
+              "supernatural": lambda: make_supernatural(cfg, used_urls, out_dir)}
     content = makers[kind]()
     if content is None and kind != "mystery":  # nothing suitable -> a mystery instead
         print(f"   no suitable {kind} item; making a mystery Reel instead")
@@ -241,6 +271,9 @@ def caption_text(content, cfg):
             lines.append(content["credit"])
     else:
         lines.append(f"{t['reel_source']}: {', '.join(content['sources'])}")
+        credits = [m["credit"] for m in content.get("media") or [] if m.get("credit")]
+        if credits:
+            lines.append("Photos/video: " + "; ".join(credits[:4]))
     lines += ["", t["reel_disclosure"], "", " ".join(cfg["reels"]["hashtags"][content["type"]])]
     return "\n".join(lines)[:2100]
 
