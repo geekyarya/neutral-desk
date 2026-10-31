@@ -105,15 +105,17 @@ The video uploads as **private**, and you approve it from the YouTube Studio pho
 3. **Ranking:** independent groups + article volume + Google News prominence + matches with today's top Google searches + Reddit buzz.
 4. **What people say:** for each story, the AI reads top threads from balanced communities (`trends.reddit_subs`) and adds 1–2 sentences on the *range* of opinions. These are labelled "opinion, not fact", with no usernames and nothing hateful. On screen they appear in a separate box, and the threads are linked in the description.
 
-## 4c. Instagram Reels (6 a day)
+## 4c. Instagram + Facebook Reels (8 a day, mostly mystery)
 
-The `reels` workflow posts one 20–30 s vertical Reel at 09, 12, 15, 18, 20 and 22 IST. The mix is set under `reels.slots` in `config.yaml`:
+The `reels` workflow posts one 20–30 s vertical Reel in each of 8 slots a day (09:07, 10:37, 12:07, 13:37, 15:07, 18:07, 20:07, 22:07 IST): **1 news, 1 strange-news and 6 mystery** (mystery gets the most reach). The mix is set under `reels.slots` in `config.yaml`:
 
 | Type | Content | Rules |
 |---|---|---|
 | `news` | A cross-checked story from today's news, a different one each slot | Facts need 3+ independent groups; everything else is attributed |
 | `mystery` | A famous real mystery from `reels.mystery_topics`, using Wikipedia text and a freely licensed Wikimedia photo | "What is documented" vs "the legend", with image credit in the caption |
 | `supernatural` | A current strange-claim news report found through Google News search | Always attributed and called unverified; never presented as true; no superstition "remedies" |
+
+Slots marked `youtube: true` in `config.yaml` also go to YouTube as Shorts. YouTube's free API allows only 6 uploads a day, so the budget is 1 bulletin + 2 news Shorts + 3 mystery Shorts. Mystery topics come from ~170 curated topics plus Wikipedia categories (`reels.mystery_categories`), rotate daily without repeating, and the AI skips sensitive ones (deaths of real people, crimes, children, recent incidents).
 
 If no suitable item exists, the slot posts a mystery instead. Instagram needs a public video URL, so each Reel is hosted as a GitHub release file, and releases older than 3 days are deleted automatically.
 

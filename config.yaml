@@ -120,9 +120,10 @@ feeds:
   - {name: "Dawn",               owner: "Dawn Group",          country: "Pakistan",  section: world, url: "https://www.dawn.com/feeds/home"}
   - {name: "Kathmandu Post",     owner: "Kantipur",            country: "Nepal",     section: world, url: "https://kathmandupost.com/rss"}
 
-# Vertical Shorts, one per story (uploaded after the main bulletin)
+# Vertical Shorts, one per story (uploaded after the main bulletin).
+# YouTube allows only 6 free API uploads a day: 1 bulletin + 2 news Shorts + 3 mystery Shorts (reels with youtube: true)
 shorts:
-  count: 5
+  count: 2
 
 # Sunday "week in review" (made from the week's daily scripts, no AI calls)
 weekly:
@@ -137,16 +138,42 @@ reels:
   slots:
     - {hour: 9,  type: news}
     - {hour: 12, type: mystery}
-    - {hour: 15, type: news}
+    - {hour: 15, type: mystery, youtube: true}      # youtube: true = also posted as a YouTube Short
     - {hour: 18, type: supernatural}
-    - {hour: 20, type: mystery}
-    - {hour: 22, type: news}
+    - {hour: 20, type: mystery, youtube: true}
+    - {hour: 22, type: mystery}
+    - {hour: 10, type: mystery, youtube: true}      # 10:37
+    - {hour: 13, type: mystery}                     # 13:37
   supernatural_query: '(ghost OR haunted OR paranormal OR UFO OR "black magic" OR exorcism OR tantrik OR mysterious OR "unexplained") India when:3d'
   hashtags:
     news: ["#hindinews", "#news", "#indianews", "#factcheck", "#zeromasala", "#reels"]
     mystery: ["#mystery", "#rahasya", "#unsolvedmysteries", "#history", "#hindi", "#zeromasala", "#reels"]
     supernatural: ["#ajabgajab", "#mystery", "#strangenews", "#hindinews", "#zeromasala", "#reels"]
+  # more mystery topics are pulled from these Wikipedia categories (after the curated lists below)
+  mystery_categories: ["Haunted places in India", "Ghost towns in India", "Unexplained phenomena", "Cryptids",
+                       "Lost ships", "Undeciphered writing systems", "Archaeological sites in India"]
   # real, well-documented mysteries (English Wikipedia titles); rotated so they don't repeat for weeks
+  more_mystery_topics: [
+    "Dholavira", "Lothal", "Indus Valley Civilisation", "Rakhigarhi", "Dwarka", "Bet Dwarka", "Poompuhar",
+    "Kumari Kandam", "Lemuria (continent)", "Ajanta Caves", "Ellora Caves", "Khajuraho Group of Monuments",
+    "Nalanda", "Gue, Himachal Pradesh", "Hampi", "Sigiriya", "Taxila", "Loktak Lake", "Brihadisvara Temple",
+    "Roanoke Colony", "Piri Reis map", "Yonaguni Monument", "Atlantis", "El Dorado", "Lost City of Z", "Machu Picchu",
+    "Teotihuacan", "Newgrange", "Carnac stones", "Avebury", "Rosslyn Chapel", "Shroud of Turin", "Holy Grail",
+    "Ark of the Covenant", "Library of Alexandria", "Great Pyramid of Giza", "Great Sphinx of Giza",
+    "Curse of the pharaohs", "Terracotta Army", "Nan Madol", "Derinkuyu underground city", "Petra", "Angkor Wat",
+    "Sacsayhuamán", "Puma Punku", "Great Zimbabwe", "Lalibela", "Hypogeum of Ħal-Saflieni", "Longyou Caves",
+    "Lake Nyos", "Lake Natron", "Blood Falls", "Darvaza gas crater", "Richat Structure", "Bimini Road",
+    "Sargasso Sea", "SS Baychimo", "Flying Dutchman", "SS Ourang Medan", "USS Cyclops (AC-4)", "Mothman",
+    "Chupacabra", "Bigfoot", "Ogopogo", "Kraken", "Jersey Devil", "Beast of Bodmin Moor", "Mokele-mbembe",
+    "Skinwalker Ranch", "Roswell incident", "Area 51", "Phoenix Lights", "Rendlesham Forest incident",
+    "Kecksburg UFO incident", "Will-o'-the-wisp", "Spontaneous human combustion", "The Hum", "Numbers station",
+    "Cicada 3301", "Beale ciphers", "Codex Gigas", "Linear A", "Lycurgus Cup", "Damascus steel", "Greek fire",
+    "Roman concrete", "Ulfberht swords", "Kensington Runestone", "Piltdown Man", "Cottingley Fairies",
+    "Cardiff Giant", "Fiji mermaid", "Crop circle", "Tanganyika laughter epidemic", "Sweating sickness", "Hy-Brasil",
+    "Agartha", "Shangri-La", "Bermuda Triangle", "Mount Kailash", "Lake Baikal", "Door to Hell", "Sunken city",
+    "Underwater city", "Ghost ship", "Hollow Earth", "Philadelphia Experiment", "Montauk Project", "Nostradamus",
+    "Tutankhamun", "Cleopatra's tomb", "Alexander the Great's tomb", "Genghis Khan's tomb", "Lost Dutchman's Gold Mine",
+    "Treasure of Lima", "Amber Room", "Hope Diamond", "Koh-i-Noor", "Peacock Throne", "Tipu Sultan's sword"]
   mystery_topics: [
     "Roopkund", "Bhangarh Fort", "Kuldhara", "Jatinga", "Kodinhi", "Lonar Lake", "Iron pillar of Delhi",
     "Kailasa temple, Ellora", "Adam's Bridge", "Shani Shingnapur", "Lepakshi", "Konark Sun Temple",

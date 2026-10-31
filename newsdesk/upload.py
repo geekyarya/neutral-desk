@@ -113,6 +113,27 @@ def upload_video(yt, cfg, path, meta, thumb=None):
     return vid
 
 
+def upload_reel_short(cfg, reel_dir, interactive=False):
+    """Post a finished Reel (vertical, under a minute) to YouTube as a Short, with its sources in the description."""
+    import json
+    from googleapiclient.discovery import build
+
+    reel_dir = Path(reel_dir)
+    meta = json.loads((reel_dir / "meta.json").read_text(encoding="utf-8"))
+    caption = (reel_dir / "caption.txt").read_text(encoding="utf-8")
+    title = f"{meta['title']} #Shorts"
+    if len(title) > 100:
+        title = meta["title"][:88] + " #Shorts"
+    lines = caption.split("\n")  # the caption already holds the sources, the AI disclosure and hashtags
+    desc = "\n".join(lines)[:4900]
+    yt = build("youtube", "v3", credentials=credentials(interactive))
+    try:
+        return upload_video(yt, cfg, reel_dir / "reel.mp4", {"title": title, "description": desc})
+    except QuotaExceeded as e:
+        print(f"YouTube daily upload quota reached; this Short was not uploaded. ({str(e)[:150]})")
+        return None
+
+
 def upload(episode, cfg, out_dir, interactive=True):
     """Main bulletin first, then each Short (linking back to the bulletin). Skips anything already uploaded."""
     from googleapiclient.discovery import build

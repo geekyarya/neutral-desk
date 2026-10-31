@@ -12,6 +12,7 @@ name: reels
 on:
   schedule:
     - cron: "37 3,6,9,12,14,16 * * *"   # 09:07 12:07 15:07 18:07 20:07 22:07 IST
+    - cron: "7 5,8 * * *"               # 10:37 13:37 IST
   workflow_dispatch:
     inputs:
       slot:
@@ -38,6 +39,7 @@ jobs:
     timeout-minutes: 30
     env:
       HAS_IG: ${{ secrets.IG_TOKEN != '' }}
+      HAS_YT: ${{ secrets.YT_TOKEN != '' }}
       HAS_FB: ${{ secrets.FB_TOKEN != '' || secrets.IG_TOKEN != '' }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -83,6 +85,14 @@ jobs:
           FB_TOKEN: ${{ secrets.FB_TOKEN }}
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
         run: python run.py reel-publish --to facebook --reel "$REEL_ID" --video-url "$VIDEO_URL"
+      - name: Post to YouTube as a Short (flagged slots only)
+        if: env.REEL_ID != '' && env.REEL_YT == 'true' && env.HAS_YT == 'true' && (github.event_name == 'schedule' || inputs.publish)
+        continue-on-error: true   # YouTube trouble (e.g. its daily limit) must not block anything else
+        env:
+          YT_TOKEN: ${{ secrets.YT_TOKEN }}
+        run: |
+          echo "$YT_TOKEN" > token.json
+          python run.py reel-youtube --reel "$REEL_ID"
       - name: Renew the Instagram token
         if: env.HAS_IG == 'true'
         continue-on-error: true

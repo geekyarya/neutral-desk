@@ -57,6 +57,9 @@ REPORTS:
 {reactions}"""
 
 MYSTERY_PROMPT = """You write 20-30 second "mystery" Reels for a fact-first channel called Zero Masala.
+First decide whether the topic is safe: if it is about a real person's death or disappearance, a crime or its
+victims, a child, a communal or terror incident, or an event from the last 30 years that could hurt someone, return
+only {{"skip": true}}.
 Topic: {topic}. Use ONLY the Wikipedia text below. Structure: a hook question, what is documented, then the
 legend or popular theory clearly labelled as such ("कहा जाता है" / "legend says"), and what experts or science
 say if the text mentions it. Never claim anything supernatural is real. No fear-mongering.
@@ -199,8 +202,35 @@ def _free_image(filename, out_dir):
     return str(path), f"Image: {artist or 'Wikimedia Commons'}, {lic}"
 
 
+_pool_cache = {}
+
+
+def mystery_pool(cfg):
+    """Curated topics first (in a stable order), then members of the configured Wikipedia categories."""
+    if "pool" in _pool_cache:
+        return _pool_cache["pool"]
+    rc = cfg["reels"]
+    pool = list(dict.fromkeys((rc.get("mystery_topics") or []) + (rc.get("more_mystery_topics") or [])))
+    extra = set()
+    for cat in rc.get("mystery_categories") or []:
+        try:
+            r = requests.get("https://en.wikipedia.org/w/api.php", headers=WIKI_UA, timeout=30, params={
+                "action": "query", "format": "json", "list": "categorymembers", "cmtitle": f"Category:{cat}",
+                "cmtype": "page", "cmlimit": 200})
+            for m in r.json().get("query", {}).get("categorymembers", []):
+                t = m["title"]
+                if ":" not in t and not t.startswith(("List of", "Lists of")) and len(t) <= 60 and t not in pool:
+                    extra.add(t)
+        except (requests.RequestException, ValueError, KeyError):
+            continue
+    pool += sorted(extra)  # stable order, so the daily rotation never repeats a topic until the pool is used up
+    _pool_cache["pool"] = pool
+    print(f"   mystery pool: {len(pool)} topics ({len(extra)} from Wikipedia categories)")
+    return pool
+
+
 def make_mystery(cfg, out_dir, slot_no):
-    topics = cfg["reels"]["mystery_topics"]
+    topics = mystery_pool(cfg)
     mystery_slots = [i for i, s in enumerate(cfg["reels"]["slots"]) if s["type"] == "mystery"]
     per_day = max(1, len(mystery_slots))
     order = mystery_slots.index(slot_no) if slot_no in mystery_slots else 0
@@ -214,8 +244,11 @@ def make_mystery(cfg, out_dir, slot_no):
             continue
         if not page:
             continue
-        res = _finish(complete_json(cfg, MYSTERY_PROMPT.format(topic=page["title"], text=page["extract"],
-                                                               **_lang(cfg))), cfg)
+        raw = complete_json(cfg, MYSTERY_PROMPT.format(topic=page["title"], text=page["extract"], **_lang(cfg)))
+        if raw.get("skip"):
+            print(f"   skipping sensitive topic: {page['title']}")
+            continue
+        res = _finish(raw, cfg)
         if not res["script"]:
             continue
         image, credit = (None, None)
