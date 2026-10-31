@@ -121,9 +121,12 @@ class Speaker:
                                   headers={"x-goog-api-key": key}, json=body, timeout=60)
                 if r.ok:
                     txt = r.json()["candidates"][0]["content"]["parts"][0]["text"]
-                    return bool(json.loads(txt).get("reads_instructions"))
+                    leak = bool(json.loads(txt).get("reads_instructions"))
+                    print(f"   voice check ({model}): {'READS INSTRUCTIONS ALOUD' if leak else 'clean'}")
+                    return leak
             except Exception:
                 continue
+        print("   voice check: could not run (treated as clean)")
         return False
 
     def _gemini(self, text, mood):
