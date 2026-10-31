@@ -9,7 +9,7 @@
   python run.py all [--upload]    script + video + shorts in one go
   python run.py weekly            Sunday week-in-review from the last 7 days' scripts -> output/week-<date>/
   python run.py reel [--slot N]   one 20-30 s Instagram Reel for the current (or given) slot -> output/reels/<id>/
-  python run.py reel-publish --video-url URL [--reel ID]   post that Reel on Instagram
+  python run.py reel-publish --video-url URL [--reel ID] [--to facebook]   post that Reel (Instagram default)
   python run.py auth              one-time YouTube login
   python run.py pack              zip face + voice files for colab/lipsync.ipynb (realistic anchor)
 """
@@ -128,9 +128,14 @@ def stage_reel(cfg, a):
 
 def stage_reel_publish(cfg, a):
     from newsdesk.config import ROOT
-    from newsdesk.instagram import publish_reel
     d = ROOT / "output" / "reels" / a.reel
-    publish_reel(a.video_url, (d / "caption.txt").read_text(encoding="utf-8"), cfg)
+    caption = (d / "caption.txt").read_text(encoding="utf-8")
+    if a.to == "facebook":
+        from newsdesk.facebook import publish_fb_reel
+        publish_fb_reel(a.video_url, caption, cfg)
+    else:
+        from newsdesk.instagram import publish_reel
+        publish_reel(a.video_url, caption, cfg)
 
 
 def stage_pack(cfg, d, ep):
@@ -160,6 +165,7 @@ def main():
     ap.add_argument("--slot", type=int, help="reel: slot number from config (default: nearest to now)")
     ap.add_argument("--reel", help="reel-publish: reel id (output/reels/<id>)")
     ap.add_argument("--video-url", help="reel-publish: public URL of the reel video")
+    ap.add_argument("--to", choices=["instagram", "facebook"], default="instagram", help="reel-publish: where")
     a = ap.parse_args()
     cfg = load_config(a.config)
     if a.stage == "weekly":

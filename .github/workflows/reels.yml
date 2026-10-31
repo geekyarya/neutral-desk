@@ -1,4 +1,4 @@
-# Instagram Reels: 6 a day (news / mystery / strange news), one per slot in config.yaml.
+# Instagram (+ Facebook Page) Reels: 6 a day (news / mystery / strange news), one per slot in config.yaml.
 # Each run makes one 20-30 s Reel, hosts the video as a GitHub release file (Instagram needs a public URL),
 # posts it to Instagram, and deletes Reel releases older than 3 days.
 #
@@ -38,6 +38,7 @@ jobs:
     timeout-minutes: 30
     env:
       HAS_IG: ${{ secrets.IG_TOKEN != '' }}
+      HAS_FB: ${{ secrets.FB_TOKEN != '' || secrets.IG_TOKEN != '' }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
@@ -75,6 +76,13 @@ jobs:
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
         run: python run.py reel-publish --reel "$REEL_ID" --video-url "$VIDEO_URL"
+      - name: Post to Facebook Page
+        if: env.REEL_ID != '' && env.HAS_FB == 'true' && (github.event_name == 'schedule' || inputs.publish)
+        continue-on-error: true   # Facebook trouble must not block anything else
+        env:
+          FB_TOKEN: ${{ secrets.FB_TOKEN }}
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+        run: python run.py reel-publish --to facebook --reel "$REEL_ID" --video-url "$VIDEO_URL"
       - name: Renew the Instagram token
         if: env.HAS_IG == 'true'
         continue-on-error: true
