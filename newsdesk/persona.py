@@ -37,18 +37,16 @@ PERSONAS = {
         "character": "lion",
         "tts_engine": "gemini",
         "gemini_voice": "Fenrir",  # excitable male voice
-        "tts_styles": {
-            "angry": "Read this in Hindi as Babbar Bhai, a frenzied Indian prime-time TV news anchor: breathless, "
-                     "rapid-fire, chaotic energy, dramatic pauses, SHOUT the key phrases and every line ending in "
-                     "'!', drip sarcasm on the taunts, natural Hindi rhythm",
-            "calm": "Read this in Hindi as Babbar Bhai, a witty Gen Z news creator with TV-anchor swagger: fast, "
-                    "playful, energetic; raise your voice for the exciting lines and deliver meme lines deadpan, "
-                    "natural Hinglish rhythm",
-            "serious": "Read this in Hindi as Babbar Bhai, now completely serious and respectful for a sad or "
-                       "tragic story: calm, low and steady, no jokes, clear articulation",
-            "intro": "Read this in Hindi as Babbar Bhai opening his news show: big, chaotic, high-energy welcome, "
-                     "like a TV anchor who just had three coffees, natural Hindi rhythm",
-            "default": "Read this in Hindi as Babbar Bhai, a lively Indian TV news anchor with natural rhythm",
+        "tts_styles": {  # director's notes for the voice (these are never spoken)
+            "angry": "Style: a frenzied prime-time TV news anchor, breathless and chaotic, dripping sarcasm. "
+                     "Delivery: rapid-fire with dramatic pauses; SHOUT the key phrases and every line ending in '!'.",
+            "calm": "Style: a witty Gen Z news creator with TV-anchor swagger. Delivery: fast, playful and "
+                    "energetic; raise the voice on exciting lines and say meme lines deadpan.",
+            "serious": "Style: completely serious and respectful, for a sad story. Delivery: calm, low and steady, "
+                       "no jokes, clear articulation.",
+            "intro": "Style: a TV anchor opening his show after three coffees. Delivery: big, loud, "
+                     "chaotic high-energy welcome.",
+            "default": "Style: a lively Indian TV news anchor. Delivery: natural rhythm.",
         },
         "pitch": 0.93,          # a bit deeper
         "length_scale": 0.72,   # faster, more urgent

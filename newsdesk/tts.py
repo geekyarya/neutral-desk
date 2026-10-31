@@ -47,6 +47,7 @@ class Speaker:
         self.engine = self.pz.get("tts_engine", self.t.get("engine", "piper"))
         self.gemini_off = False
         self.pinned = None  # when set, only this Gemini speech model is used (keeps one voice per episode)
+        self.variant = 0    # prompt style for the voice; stepped down if the voice reads its instructions
         self._piper_voice = None
         self.last_engine = None
         self.last_spans = []
@@ -70,6 +71,61 @@ class Speaker:
         self._models = wanted
         return wanted
 
+    def _prompt(self, text, mood):
+        """What is sent to the speech model. The acting notes must never be spoken, so they are kept apart from the
+        words to say. Variant 0: labelled director's notes + TRANSCRIPT marker. 1: a short 'Say ...:' line.
+        2: just the words (used if the voice still reads its instructions aloud)."""
+        notes = (self.pz.get("tts_styles", {}).get(mood) or self.pz.get("tts_styles", {}).get("default", "")).strip()
+        if not notes or self.variant >= 2:
+            return text
+        if self.variant == 1:
+            return f"Say in this manner ({notes}):\n{text}"
+        return ("# AUDIO PROFILE: Prime-time news anchor\n"
+                "## THE SCENE: A busy Indian TV news studio.\n"
+                "### DIRECTOR'S NOTES (never speak these)\n"
+                f"{notes}\n"
+                "Language: Hindi, with natural Indian rhythm.\n"
+                "Speak ONLY the words under TRANSCRIPT, exactly as written.\n"
+                "#### TRANSCRIPT\n"
+                f"{text}")
+
+    def _reads_instructions(self, pcm, rate):
+        """Listen to the first seconds of a clip: does the voice read out stage directions (like 'read this in
+        Hindi as ...')? Returns False when unsure or when the check itself can't run."""
+        import base64
+        import io
+        import json
+        import os
+        import wave
+        import requests
+        key = os.environ.get("GEMINI_API_KEY")
+        if not key or len(pcm) < rate:
+            return False
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(rate)
+            w.writeframes(pcm[: rate * 8].tobytes())
+        body = {"contents": [{"parts": [
+            {"inlineData": {"mimeType": "audio/wav", "data": base64.b64encode(buf.getvalue()).decode()}},
+            {"text": "This is the opening of a Hindi news clip. Does the speaker say any sentence in ENGLISH that "
+                     "sounds like an instruction to a voice actor (for example 'read this in Hindi', 'say it "
+                     "loudly', 'as a news anchor', 'transcript', 'audio profile')? Single English words or names "
+                     "inside the Hindi news do not count. Answer JSON: {\"reads_instructions\": true or false}"}]}],
+            "generationConfig": {"temperature": 0, "responseMimeType": "application/json"}}
+        llm = self.cfg.get("llm", {})
+        for model in [llm.get("gemini_model", "gemini-flash-latest"), *llm.get("gemini_fallback_models", [])]:
+            try:
+                r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                                  headers={"x-goog-api-key": key}, json=body, timeout=60)
+                if r.ok:
+                    txt = r.json()["candidates"][0]["content"]["parts"][0]["text"]
+                    return bool(json.loads(txt).get("reads_instructions"))
+            except Exception:
+                continue
+        return False
+
     def _gemini(self, text, mood):
         import base64
         import os
@@ -79,8 +135,7 @@ class Speaker:
         key = os.environ.get("GEMINI_API_KEY")
         if not key:
             raise RuntimeError("no GEMINI_API_KEY")
-        style = self.pz.get("tts_styles", {}).get(mood) or self.pz.get("tts_styles", {}).get("default", "")
-        body = {"contents": [{"parts": [{"text": f"{style}:\n{text}" if style else text}]}],
+        body = {"contents": [{"parts": [{"text": self._prompt(text, mood)}]}],
                 "generationConfig": {"responseModalities": ["AUDIO"], "speechConfig": {"voiceConfig": {
                     "prebuiltVoiceConfig": {"voiceName": self.pz.get("gemini_voice", "Fenrir")}}}}}
         last = None
@@ -96,6 +151,10 @@ class Speaker:
                         rate = int((re.search(r"rate=(\d+)", part.get("mimeType", "")) or [0, 24000])[1])
                         pcm = np.frombuffer(base64.b64decode(part["data"]), dtype=np.int16)
                         self.last_engine = f"gemini:{model}"
+                        if self.variant < 2 and self._reads_instructions(pcm, rate):
+                            self.variant += 1  # sticky: the same prompt style would leak again
+                            print(f"   the voice read its instructions aloud; switching to prompt style {self.variant}")
+                            return self._gemini(text, mood)
                         return pcm, rate
                     # empty answer (it happens now and then, or a filter tripped): retry, then the next model
                     last = f"{model}: no audio (finishReason={cand.get('finishReason')})"
