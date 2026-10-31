@@ -42,3 +42,16 @@ def publish_fb_reel(video_url, caption, cfg, token=None):
         time.sleep(10)
     print(f"Published Facebook Reel on {page.get('name')}: https://www.facebook.com/reel/{vid}")
     return vid
+
+
+def publish_fb_video(video_url, title, description, cfg, token=None):
+    """Post a regular (long) video to the Facebook Page; Facebook fetches it from video_url."""
+    token = token or os.environ.get("FB_TOKEN") or os.environ.get("IG_TOKEN")
+    if not token or not token.startswith("EAA"):
+        raise RuntimeError("Set FB_TOKEN (a Facebook Page access token with pages_manage_posts)")
+    v = cfg["instagram"]["api_version"]
+    page = _check(requests.get(f"{BASE}/{v}/me", params={"fields": "id,name", "access_token": token}, timeout=30))
+    res = _check(requests.post(f"{BASE}/{v}/{page['id']}/videos", timeout=300, data={
+        "file_url": video_url, "title": title[:250], "description": description[:5000], "access_token": token}))
+    print(f"Published Facebook video on {page.get('name')}: https://www.facebook.com/{page['id']}/videos/{res['id']}")
+    return res["id"]

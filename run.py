@@ -8,6 +8,7 @@
   python run.py upload            upload bulletin + Shorts to YouTube
   python run.py all [--upload]    script + video + shorts in one go
   python run.py weekly            Sunday week-in-review from the last 7 days' scripts -> output/week-<date>/
+  python run.py fb-video --video-url URL   post the day's bulletin to the Facebook Page
   python run.py reel [--slot N]   one 20-30 s Instagram Reel for the current (or given) slot -> output/reels/<id>/
   python run.py reel-publish --video-url URL [--reel ID] [--to facebook]   post that Reel (Instagram default)
   python run.py auth              one-time YouTube login
@@ -138,6 +139,13 @@ def stage_reel_publish(cfg, a):
         publish_reel(a.video_url, caption, cfg)
 
 
+def stage_fb_video(cfg, d, a):
+    from newsdesk.facebook import publish_fb_video
+    title = (d / "youtube_title.txt").read_text(encoding="utf-8")
+    desc = (d / "youtube_description.txt").read_text(encoding="utf-8")
+    publish_fb_video(a.video_url, title, desc, cfg)
+
+
 def stage_pack(cfg, d, ep):
     import zipfile
     from newsdesk.config import ROOT
@@ -158,7 +166,7 @@ def stage_pack(cfg, d, ep):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("stage", choices=["script", "audio", "video", "shorts", "upload", "all", "auth", "pack", "weekly",
-                                       "reel", "reel-publish"])
+                                       "reel", "reel-publish", "fb-video"])
     ap.add_argument("--date", help="episode date folder (default today)")
     ap.add_argument("--upload", action="store_true", help="with 'all': also upload")
     ap.add_argument("--config")
@@ -191,6 +199,8 @@ def main():
     elif a.stage == "upload":
         from newsdesk.upload import upload
         save(upload(load(d), cfg, d, interactive=sys.stdin.isatty()), d)
+    elif a.stage == "fb-video":
+        stage_fb_video(cfg, d, a)
     elif a.stage == "pack":
         stage_pack(cfg, d, load(d))
     elif a.stage == "all":

@@ -33,7 +33,7 @@ on:
 
 permissions:
   actions: read     # to see whether today's episode was already made
-  contents: read
+  contents: write   # to host the bulletin as a release file for Facebook
 
 concurrency: daily-episode   # backups wait for a running episode instead of starting a second one
 
@@ -63,6 +63,7 @@ jobs:
     timeout-minutes: 150   # leaves room for the slow CPU backup model if Gemini is out of quota
     env:
       HAS_YT: ${{ secrets.YT_TOKEN != '' }}
+      HAS_FB: ${{ secrets.FB_TOKEN != '' || secrets.IG_TOKEN != '' }}
       OLLAMA_MODELS: /home/runner/ollama-models
     steps:
       - uses: actions/checkout@v4
@@ -109,6 +110,24 @@ jobs:
         run: |
           echo "$YT_TOKEN" > token.json
           python run.py upload
+      - name: Post the bulletin to the Facebook Page
+        if: env.HAS_FB == 'true' && (github.event_name == 'schedule' || inputs.upload)
+        continue-on-error: true   # Facebook trouble must not block anything else
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          FB_TOKEN: ${{ secrets.FB_TOKEN }}
+        run: |
+          TAG="bulletin-${EPISODE_DATE}-${GITHUB_RUN_ID}"
+          cp "output/${EPISODE_DATE}/episode.mp4" "$TAG.mp4"
+          gh release create "$TAG" "$TAG.mp4" --prerelease --title "Bulletin ${EPISODE_DATE}" --notes "Automated bulletin."
+          python run.py fb-video --date "$EPISODE_DATE" \
+            --video-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${TAG}.mp4"
+          sleep 120   # give Facebook time to fetch the file before old ones are cleaned up
+          CUTOFF=$(date -u -d '3 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          gh release list --limit 100 --json tagName,createdAt \
+            --jq ".[] | select(.tagName | startswith(\"bulletin-\")) | select(.createdAt < \"$CUTOFF\") | .tagName" |
+          while read -r tag; do gh release delete "$tag" --cleanup-tag --yes; done
       - uses: actions/upload-artifact@v4
         with:
           name: episode
