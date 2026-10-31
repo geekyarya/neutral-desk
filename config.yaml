@@ -145,7 +145,7 @@ instagram:
 # Trending + public opinion
 trends:
   google_trends: true        # boost stories that match today's top Google searches in India
-  reddit: true               # add "what people say" (summarised range of opinions, labelled as opinion)
+  reddit: false              # "what people say" from Reddit; Reddit blocks GitHub's servers, so off for automatic runs
   # communities from across the spectrum, like the news outlets
   reddit_subs: ["india", "IndiaSpeaks", "indianews", "unitedstatesofindia", "IndianModerate"]
   google_news: true          # discover today's most prominent stories on Google News India
