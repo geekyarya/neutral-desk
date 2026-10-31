@@ -46,7 +46,7 @@ Return JSON with exactly these keys:
   "suspense" (unexplained or mysterious things), or "none" (any tragedy: silence is more respectful).
 - "meme_line": ONLY if tragedy is false: a short, funny meme-style sticker line (max 6 words, written exactly as it
   appears in your script) in internet / Gen Z Hinglish, e.g. "सीन बन गया भाई!", "ये क्या हो रहा है भाई!", "L टेक है ये".
-  Put that same line as its own sentence in the MIDDLE of "script". Use "" for tragedies.
+  Put that same line as its own sentence in the MIDDLE of "script". Use "" for tragedies. {meme_hint}
 - "image_queries": 2 or 3 short English photo-search phrases for this story (e.g. "Ramlila Maidan rally",
   "Arunachal Pradesh border", "GSLV rocket launch"). Places, events, objects; never private individuals.
 - "why_it_matters": one line, max 15 words, the practical significance of the story, only as far as the reports
@@ -162,6 +162,12 @@ def _fix_spelling(res, fixes):
 
 
 def _music_and_meme(res):
+    out = _music_and_meme_raw(res)
+    out["angry"] = bool(res.get("angry", False)) and not out["tragedy"]  # tragedies are told seriously, never angrily
+    return out
+
+
+def _music_and_meme_raw(res):
     """Pick the music mood (silence for tragedies) and keep the meme sticker line only where it is allowed."""
     from .sound import MUSIC_STYLES
     tragedy = bool(res.get("tragedy")) or (res.get("mood") == "bad" and not res.get("angry"))
@@ -178,6 +184,21 @@ def _music_and_meme(res):
     return {"tragedy": tragedy, "music": music, "meme_line": meme, "meme_at": round(min(max(pos, 0.2), 0.8), 2)}
 
 
+MEME_BANK = ["सीन बन गया भाई!", "ये क्या हो रहा है भाई!", "कुकिंग चल रही है!", "L टेक है ये!", "W खबर!",
+             "NPC वाली हरकत!", "ऑरा माइनस!", "मेन कैरेक्टर एनर्जी!", "टच ग्रास भाई!", "रेशियो हो गया!",
+             "नो कैप, सच में!", "भाई कुछ भी!", "डेलूलू है क्या?", "पैसा वसूल!", "हेरा फेरी वाला सीन!",
+             "रसोड़े में कौन था?", "सब कुछ चंगा सी!", "ये तो होना ही था!", "बवाल मच गया!", "कहानी में ट्विस्ट!"]
+
+
+def meme_hint(used):
+    import random
+    fresh = [m for m in MEME_BANK if m not in used]
+    hint = "For variety pick a line like one of these (or invent a fresh one): " + ", ".join(random.sample(fresh, 4)) + "."
+    if used:
+        hint += " Already used in this video, do NOT repeat: " + ", ".join(used) + "."
+    return hint
+
+
 def _package(res, story, k, fixes=None):
     res = _fix_spelling(res, fixes or {})
     confirmed, disputed = _verify(res, story, k)
@@ -188,7 +209,6 @@ def _package(res, story, k, fixes=None):
             "short_script": str(res.get("short_script") or "").strip(),
             "why_it_matters": str(res.get("why_it_matters") or "").strip(),
             "mood": res.get("mood") if res.get("mood") in ("good", "bad", "neutral") else "neutral",
-            "angry": bool(res.get("angry", False)),
             **_music_and_meme(res),
             "image_queries": [str(q) for q in (res.get("image_queries") or [])][:3],
             "visuals": [str(v) for v in (res.get("visuals") or [])][:4],
@@ -200,7 +220,7 @@ def _edit_with_llm(story, cfg):
     k = min(cfg["editor"]["confirm_threshold"], story["n_outlets"])
     reactions = story.get("reactions") or []
     prompt = PROMPT.format(n=len(story["articles"]), k=k, words="90 to 130", short_words="60 to 80",
-                           style=persona(cfg)["style"],
+                           style=persona(cfg)["style"], meme_hint=meme_hint(story.get("used_memes") or []),
                            language=T(cfg)["llm_language"], reports=_reports_text(story),
                            reaction_rule=REACTION_RULE if reactions else NO_REACTIONS,
                            reactions=("\nPUBLIC REACTION (Reddit posts and comments: opinions, NOT facts):\n"
@@ -268,6 +288,7 @@ def build_episode(candidates, cfg):
             if use_llm and cfg.get("trends", {}).get("reddit"):
                 s["reactions"] = reddit_reactions(s, cfg["trends"]["reddit_subs"])
                 print(f"   people's reaction: {len(s['reactions'])} Reddit threads")
+            s["used_memes"] = [m for _, o in picked for m in [o.get("meme_line")] if m]
             try:
                 out = _edit_with_llm(s, cfg) if use_llm else _edit_without_llm(s)
             except RuntimeError as e:  # one failed story shouldn't kill the whole episode
