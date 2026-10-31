@@ -398,6 +398,17 @@ def render_episode(episode, cfg, out_dir):
         if key in cache:
             return cache[key]
         seg = segs[si]
+        if stage == "clean":  # full-screen visual: only the top bar and a slim headline strip
+            layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            layer.paste(topbar, (0, 0))
+            dd = ImageDraw.Draw(layer)
+            y0 = tick_y - s(64)
+            dd.rectangle([0, y0, W, tick_y], fill=(8, 12, 24, 215))
+            dd.rectangle([0, y0, s(8), tick_y], fill=ACCENT)
+            for line in wrap(dd, seg["headline"], L.f["list"], W - s(330), 1):
+                L.text(dd, (s(28), y0 + s(14)), line, "list", WHITE)
+            cache[key] = layer
+            return layer
         if seg["kind"] == "story" and seg["id"] in photos:
             layer = fade.copy()
             layer.paste(topbar, (0, 0))
@@ -454,7 +465,8 @@ def render_episode(episode, cfg, out_dir):
             if p > 0.92 and k + 1 < len(imgs) and imgs[k + 1][0] == "img":  # crossfade into the next photo
                 img = Image.blend(img, visual(k + 1, 0.0), (p - 0.92) / 0.08)
             img = img.convert("RGBA")
-            img.alpha_composite(card(si, stage))
+            x = tl / dur  # twice per story the text steps aside and the news visual fills the screen
+            img.alpha_composite(card(si, "clean" if 0.30 <= x < 0.44 or 0.60 <= x < 0.72 else stage))
             credit = ("Video: " if imgs[k][0] == "video" else "Photo: ") + imgs[k][2]
             dd = ImageDraw.Draw(img)
             cw = small.length(dd, credit)

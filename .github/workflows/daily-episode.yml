@@ -9,10 +9,12 @@
 name: daily-episode
 
 on:
-  schedule:   # GitHub can start scheduled runs hours late, so there are backups; later ones skip themselves
-    - cron: "37 1 * * *"   # 07:07 IST
-    - cron: "37 2 * * *"   # 08:07 IST (backup)
-    - cron: "37 3 * * *"   # 09:07 IST (backup)
+  # Runs just after YouTube's daily upload quota resets (midnight US Pacific = 12:30/13:30 IST), so a late
+  # start can never collide with the next day's run. Backups skip themselves if today's episode exists.
+  schedule:
+    - cron: "37 8 * * *"   # 14:07 IST
+    - cron: "37 9 * * *"   # 15:07 IST (backup)
+    - cron: "37 10 * * *"  # 16:07 IST (backup)
   workflow_dispatch:
     inputs:
       upload:

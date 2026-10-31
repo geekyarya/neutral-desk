@@ -70,7 +70,7 @@ A 4–6 minute episode renders in about 1 minute on a normal laptop CPU.
 
 ## 4. Fully automatic daily run (optional, free)
 
-Push this folder to a GitHub repo. `.github/workflows/daily-episode.yml` builds an episode every day at 07:07 IST on GitHub's free runners, using Gemini and the built-in anchor. Add these repo secrets:
+Push this folder to a GitHub repo. `.github/workflows/daily-episode.yml` builds an episode every day at 14:07 IST (just after YouTube's daily upload quota resets) on GitHub's free runners, using Gemini and the built-in anchor. Add these repo secrets:
 - `GEMINI_API_KEY`
 - `YT_TOKEN` (optional): your YouTube login, created as described below.
 
@@ -91,7 +91,7 @@ The video uploads as **private**, and you approve it from the YouTube Studio pho
 
 | When | Workflow | What it makes |
 |---|---|---|
-| Every day, 07:07 IST | `daily-episode` | The main bulletin (5–6 min) plus one vertical **Short** per story (30–40 s, up to 5). Everything is uploaded, and each Short links to the bulletin. |
+| Every day, 14:07 IST | `daily-episode` | The main bulletin (5–6 min) plus one vertical **Short** per story (30–40 s, up to 5). Everything is uploaded, and each Short links to the bulletin. |
 | Every Sunday, 10:07 IST | `weekly-review` | A long **week in review** from the week's best-covered stories. It's saved under the run's *Artifacts* for you to upload manually. |
 
 - **AI backup:** Gemini writes the scripts. If it is down or out of free quota, a small Ollama model (`gemma3:4b`) on the GitHub runner takes over. It is slower and writes weaker Hindi, but the episode still goes out.
