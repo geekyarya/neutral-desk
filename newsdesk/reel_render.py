@@ -9,6 +9,7 @@ from PIL import Image, ImageDraw, ImageOps
 from . import anchor as anchor_mod
 from .persona import persona
 from .render import ACCENT, AMBER, BG_BOTTOM, BG_TOP, GREEN, WHITE, _cover, _kenburns, _pip_sprites, _VideoReader, encode
+from .memes import MEME_SECONDS, make_sticker, paste_sticker
 from .sound import mix
 from .strings import T
 from .text import Font, wrap
@@ -84,14 +85,19 @@ def render_reel(content, cfg, out_dir):
     outro = t["reel_outro"].format(name=name)
     wav = out_dir / "voice.wav"
     speaker = Speaker(cfg)
-    angry = bool(content.get("angry"))
-    speaker.say(f"{content['script']} {outro}", wav, 0.5, "angry" if angry else "calm")
+    angry = bool(content.get("angry")) and not content.get("tragedy")
+    mood = "serious" if content.get("tragedy") else "angry" if angry else "calm"
+    speaker.say(f"{content['script']} {outro}", wav, 0.5, mood)
     audio, sr = read_wav(wav)
     n = int(len(audio) / sr * FPS)
     chunks = caption_chunks(f"{content['script']} {outro}")
     which = _timeline(chunks, len(audio) / sr - 0.5, n)
     mixed = out_dir / "voice_music.wav"  # light music under the voice
-    _write_wav(mixed, mix(audio, sr, [], 0.10, "calm"), sr)
+    speech_s = len(audio) / sr - 0.5
+    meme_t = speech_s * content.get("meme_at", 0.5)
+    _write_wav(mixed, mix(audio, sr, [], 0.10, content.get("music") or "chill",
+                          memes=[meme_t] if content.get("meme_line") else []), sr)
+    sticker = make_sticker(content["meme_line"], 56) if content.get("meme_line") else None
 
     overlay = _overlay(cfg, content, f)
     pz = persona(cfg)
@@ -180,6 +186,9 @@ def render_reel(content, cfg, out_dir):
                 img.alpha_composite(caption_layer(ci))
                 frame_cache[key] = img
             img = frame_cache[key].copy()
+        if sticker is not None and meme_t <= i / FPS < meme_t + MEME_SECONDS:
+            img = paste_sticker(img.convert("RGBA"), sticker, i / FPS - meme_t, MEME_SECONDS,
+                                (W // 2, 760 if items else 900))
         img = img.convert("RGB")
         ImageDraw.Draw(img).rectangle([0, H - 12, int(W * (i + 1) / n), H], fill=GREEN)
         return img.tobytes()

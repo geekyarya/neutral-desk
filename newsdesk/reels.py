@@ -14,7 +14,7 @@ import requests
 from pathlib import Path
 
 from .cluster import cluster_stories
-from .editor import _clean, _fix_spelling, _reports_text, _stray, wrong_language
+from .editor import _clean, _fix_spelling, _music_and_meme, _reports_text, _stray, wrong_language
 from .fetch import fetch_all, fetch_full_text
 from .llm import complete_json
 from .persona import persona
@@ -33,6 +33,12 @@ COMMON_RULES = """Return JSON with these keys:
 
 extra_keys = """- "angry": true only if the reports describe clear wrongdoing, negligence that hurt people, corruption or
   injustice; false for ordinary politics, weather, science, sport and achievements.
+- "tragedy": true if it involves deaths, injuries, disasters, violence, crimes against people or children, or war
+  casualties (told seriously: no jokes, no memes, no music).
+- "music": "tense" (wrongdoing, attacks, anger), "upbeat" (good news), "chill" (ordinary news), "suspense"
+  (mysterious things) or "none" (tragedies).
+- "meme_line": only if tragedy is false: a funny Gen Z meme-style sticker line (max 6 words, exactly as it appears
+  as its own sentence in the middle of "script"), e.g. "सीन बन गया भाई!". "" for tragedies.
 - "visuals": 2-3 English Wikipedia article titles that illustrate it (places, institutions, landmarks, public figures).
 - "image_queries": 2-3 short English photo-search phrases for it (places, events, objects; never private people).
 """
@@ -149,6 +155,7 @@ def make_news(cfg, used_urls, out_dir=None):
         res = _finish(res, cfg)
         if not res["script"]:
             continue
+        res.update(_music_and_meme(res))
         outlets = list(dict.fromkeys(a["outlet"] for a in story["articles"]))
         res.update(type="news", urls=sorted(urls), sources=outlets, image=None, credit=None,
                    chip=T(cfg)["reported_by"].format(n=story["n_outlets"]),
@@ -218,6 +225,7 @@ def make_mystery(cfg, out_dir, slot_no):
             except requests.RequestException:
                 pass
         url = "https://en.wikipedia.org/wiki/" + page["title"].replace(" ", "_")
+        res.update(music="suspense", meme_line="", tragedy=False)
         res.update(type="mystery", urls=[url], sources=["Wikipedia"], image=image, credit=credit, chip=None,
                    media=[{"type": "img", "path": image, "credit": credit}] if image else [])
         return res
@@ -241,6 +249,7 @@ def make_supernatural(cfg, used_urls, out_dir=None):
     res = _finish(res, cfg)
     if not res["script"]:
         return None
+    res.update(music="suspense", meme_line="", tragedy=False)
     e = entries[idx]
     source = (e.get("source") or {}).get("title") or e.title.rsplit(" - ", 1)[-1]
     res.update(type="supernatural", urls=[e.link], sources=[source], image=None, credit=None, chip=None,

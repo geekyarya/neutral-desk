@@ -87,7 +87,7 @@ def render_short(seg, cfg, speaker, out_dir):
     name = cfg["channel"].get("spoken_name") or cfg["channel"]["name"]
     wav = shorts_dir / f"{seg['id']}.wav"
     duration = speaker.say(f"{short_text(seg)} {t['short_outro'].format(name=name)}", wav, 0.4,
-                           "angry" if seg.get("angry") else "calm")
+                           "serious" if seg.get("tragedy") else "angry" if seg.get("angry") else "calm")
     audio, sr = read_wav(wav)
     n = int(len(audio) / sr * FPS)
 
@@ -125,7 +125,7 @@ def render_short(seg, cfg, speaker, out_dir):
         w.setnchannels(1)
         w.setsampwidth(2)
         w.setframerate(sr)
-        w.writeframes(mix(audio, sr, [], 0.10, "calm").tobytes())
+        w.writeframes(mix(audio, sr, [], 0.10, seg.get("music") or "chill").tobytes())
     encode(frame_rgb, n, W, H, FPS, mixed, out)
     wav.unlink()
     mixed.unlink()

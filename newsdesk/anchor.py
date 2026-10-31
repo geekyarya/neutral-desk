@@ -163,15 +163,17 @@ def draw_parrot(mouth=0, blink=False, w=420, h=520):
     return out
 
 
-def draw_lion(mouth=0, blink=False, w=420, h=520, cool=False):
+def draw_lion(mouth=0, blink=False, w=420, h=520, cool=False, serious=False):
     """Babbar Bhai: a sleek cartoon lion anchor in a suit.
-    cool=True: calm, aviator sunglasses.  cool=False: angry, red face, furious almond eyes, vein and steam."""
+    cool=True: calm, aviator sunglasses.  cool=False: angry, red face, furious almond eyes, vein and steam.
+    serious=True: for tragedies: no shades, sad eyes, no smirk, no anger."""
     import math
     img = Image.new("RGBA", (w * S, h * S), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     cx, hy = w // 2, 196
     line = (55, 25, 12)
-    angry = not cool
+    angry = not cool and not serious
+    cool = cool and not serious
     face = (226, 96, 64) if angry else (236, 170, 74)
     face_lt = (246, 160, 130) if angry else (250, 220, 165)
     mane_dark = (120, 38, 22) if angry else (122, 62, 24)
@@ -241,6 +243,15 @@ def draw_lion(mouth=0, blink=False, w=420, h=520, cool=False):
                          (ex - side * 12, hy + 6)]), fill=(80, 92, 118))
             _line(d, [(ex - side * 30, hy - 48), (ex + side * 36, hy - 46)], (95, 45, 18), 9)  # relaxed brows
         _line(d, [(cx - 12, hy - 22), (cx, hy - 26), (cx + 12, hy - 22)], frame, 7)  # bridge
+    elif serious:
+        for side in (-1, 1):
+            ex = cx + side * 42
+            if blink:
+                _line(d, [(ex - 20, hy - 4), (ex + 20, hy - 4)], line, 6)
+            else:
+                d.ellipse([(ex - 22) * S, (hy - 20) * S, (ex + 22) * S, (hy + 14) * S], fill=(255, 245, 215))
+                d.ellipse([(ex - 8) * S, (hy - 8) * S, (ex + 8) * S, (hy + 10) * S], fill=(35, 25, 18))
+            _line(d, [(ex - side * 30, hy - 54), (ex + side * 30, hy - 36)], (95, 45, 18), 10)  # sad brows: inner end up
     else:
         for side in (-1, 1):
             ex = cx + side * 42
@@ -263,7 +274,9 @@ def draw_lion(mouth=0, blink=False, w=420, h=520, cool=False):
     d.polygon(P([(cx - 22, hy + 40), (cx + 22, hy + 40), (cx + 8, hy + 60), (cx - 8, hy + 60)]), fill=(80, 35, 28))
     gap = (5, 20, 34)[mouth]
     if mouth == 0:
-        if cool:  # smirk
+        if serious:
+            _line(d, [(cx - 26, hy + 90), (cx, hy + 84), (cx + 26, hy + 90)], line, 5)
+        elif cool:  # smirk
             _line(d, [(cx - 30, hy + 84), (cx - 4, hy + 90), (cx + 30, hy + 78)], line, 5)
         else:  # clenched snarl
             _line(d, [(cx - 30, hy + 84), (cx, hy + 80), (cx + 30, hy + 84)], line, 6)
@@ -272,8 +285,9 @@ def draw_lion(mouth=0, blink=False, w=420, h=520, cool=False):
     else:
         d.chord([(cx - 44) * S, (hy + 70) * S, (cx + 44) * S, (hy + 78 + gap * 1.5) * S], 0, 180,
                 fill=(120, 20, 25), outline=line, width=4 * S)
-        for tx in (cx - 28, cx + 18):  # fangs
-            _poly(d, [(tx, hy + 76), (tx + 11, hy + 76), (tx + 5, hy + 76 + 9 + gap / 4)], (255, 255, 255))
+        for tx in (cx - 28, cx + 18):  # fangs (not when serious)
+            if not serious:
+                _poly(d, [(tx, hy + 76), (tx + 11, hy + 76), (tx + 5, hy + 76 + 9 + gap / 4)], (255, 255, 255))
         d.ellipse([(cx - 20) * S, (hy + 76 + gap * 0.8) * S, (cx + 20) * S, (hy + 88 + gap) * S],
                   fill=(230, 90, 100))
     img = img.resize((w, h), Image.LANCZOS)
@@ -288,10 +302,10 @@ def draw_lion(mouth=0, blink=False, w=420, h=520, cool=False):
 CHARACTERS = {"anchor": draw_anchor, "parrot": draw_parrot, "lion": draw_lion}
 
 
-def sprites(w=420, h=520, character="anchor", cool=False):
+def sprites(w=420, h=520, character="anchor", cool=False, serious=False):
     draw = CHARACTERS.get(character, draw_anchor)
     if character == "lion":
-        return {(m, b): draw_lion(m, b, w, h, cool) for m in (0, 1, 2) for b in (False, True)}
+        return {(m, b): draw_lion(m, b, w, h, cool, serious) for m in (0, 1, 2) for b in (False, True)}
     return {(m, b): draw(m, b, w, h) for m in (0, 1, 2) for b in (False, True)}
 
 

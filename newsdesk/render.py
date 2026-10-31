@@ -9,6 +9,7 @@ from PIL import Image, ImageDraw, ImageOps
 
 from . import anchor as anchor_mod
 from .persona import persona
+from .memes import MEME_SECONDS, make_sticker, paste_sticker
 from .strings import T, date_text
 from .text import Font, wrap
 from .tts import read_wav
@@ -331,9 +332,14 @@ def render_episode(episode, cfg, out_dir):
     vcfg = cfg.get("video", {})
     if vcfg.get("music", True):
         from .sound import mix
+        # each segment gets the music mood that fits it (the AI chose one per story; tragedies get silence)
+        spans = [(st, st + sg["duration"], {"intro": "upbeat", "outro": "chill"}.get(sg["kind"])
+                  or sg.get("music") or "chill") for st, sg in zip(starts, segs)]
         mixed = mix(audio, sr, [st for st, sg in zip(starts, segs) if sg["kind"] == "story"],
-                    vcfg.get("music_volume", 0.12), persona(cfg).get("music", "calm"),
-                    hits=[st + 0.05 for st, sg in zip(starts, segs) if sg.get("angry")])
+                    vcfg.get("music_volume", 0.12), spans=spans,
+                    hits=[st + 0.05 for st, sg in zip(starts, segs) if sg.get("angry")],
+                    memes=[st + sg["duration"] * sg.get("meme_at", 0.5) for st, sg in zip(starts, segs)
+                           if sg.get("meme_line")])
         audio_path = out_dir / "audio" / "episode_mix.wav"
         with wave.open(str(audio_path), "wb") as w:
             w.setnchannels(1)
@@ -356,7 +362,9 @@ def render_episode(episode, cfg, out_dir):
     fx = None
     if pz.get("shout_effects") and sprites is not None:
         cool = anchor_mod.sprites(s(420), s(520), pz["character"], cool=True)
-        fx = {"cool": cool, "cool_pips": _pip_sprites(cool, pip_d, face_y)}
+        serious = anchor_mod.sprites(s(420), s(520), pz["character"], serious=True)
+        fx = {"cool": cool, "cool_pips": _pip_sprites(cool, pip_d, face_y),
+              "serious": serious, "serious_pips": _pip_sprites(serious, pip_d, face_y)}
     shake = pz.get("shake", False)
     anchor_pos = (s(830), s(92))
     pip_pos = (W - pip_d - s(42), H - s(52) - pip_d - s(32))
@@ -390,6 +398,7 @@ def render_episode(episode, cfg, out_dir):
     small = Font(s(13))
 
     cache = {"seg": None}
+    stickers = {}
     breaking = persona(cfg).get("breaking", False)
 
     def card(si, stage):
@@ -472,7 +481,8 @@ def render_episode(episode, cfg, out_dir):
             cw = small.length(dd, credit)
             small.draw(dd, (W - cw - s(14), s(64)), credit, (230, 230, 230), stroke=2, stroke_fill=(0, 0, 0))
             shouting = bool(fx) and bool(seg.get("angry"))  # the whole story: furious or cool
-            pip = (fx["cool_pips"] if fx and not shouting else pips)[(mouth, blink)]
+            calm_pips = fx["serious_pips"] if fx and seg.get("tragedy") else fx["cool_pips"] if fx else pips
+            pip = (calm_pips if fx and not shouting else pips)[(mouth, blink)]
             pip = pip.rotate(2.5 * math.sin(tl * 2.2), resample=Image.BICUBIC)  # gentle head tilt
             jx, jy = ((i * 7) % 9 - 4, (i * 5) % 7 - 3) if shake and shouting and mouth == 2 else (0, 0)
             pos = (pip_pos[0] + s(jx), pip_pos[1] + s(jy) + int(s(3) * math.sin(tl * 7)))
@@ -481,7 +491,7 @@ def render_episode(episode, cfg, out_dir):
             if fx:  # animated lion: head bob/tilt each frame, calm (shades) or burning while shouting
                 shouting = bool(seg.get("angry"))
                 img = card(si, stage).copy()
-                sp = (sprites if shouting else fx["cool"])[(mouth, blink)]
+                sp = (sprites if shouting else fx["serious"] if seg.get("tragedy") else fx["cool"])[(mouth, blink)]
                 sp = sp.rotate(2 * math.sin(tl * 1.9), resample=Image.BICUBIC)
                 jx, jy = ((i * 7) % 9 - 4, (i * 5) % 7 - 3) if shake and shouting and mouth == 2 else (0, 0)
                 pos = (anchor_pos[0] + s(jx), anchor_pos[1] + s(jy) + int(s(4) * math.sin(tl * 6)))
@@ -509,7 +519,15 @@ def render_episode(episode, cfg, out_dir):
             if right - left > lw:
                 L.text(dd, ((left + right - lw) / 2, H / 2 - s(40)), label, "thumb", WHITE)
 
-        if breaking and seg["kind"] == "story" and int(tl * 2) % 2 == 0:  # flashing "BREAKING" pill
+        ml = seg.get("meme_line") if seg["kind"] == "story" else ""
+        if ml:  # meme sticker pops up mid-story, in sync with the meme line in the script
+            t0 = dur * seg.get("meme_at", 0.5)
+            if t0 <= tl < t0 + MEME_SECONDS:
+                if seg["id"] not in stickers:
+                    stickers[seg["id"]] = make_sticker(ml, s(50))
+                img = paste_sticker(img.convert("RGBA"), stickers[seg["id"]], tl - t0, MEME_SECONDS,
+                                    (W // 2, int(H * 0.44)))
+        if breaking and seg["kind"] == "story" and not seg.get("tragedy") and int(tl * 2) % 2 == 0:  # flashing "BREAKING" pill
             dd = ImageDraw.Draw(img)
             bx = W // 2 - s(70)
             dd.rounded_rectangle([bx, s(12), bx + s(140), s(44)], radius=s(6), fill=(220, 20, 30))

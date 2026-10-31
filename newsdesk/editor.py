@@ -39,6 +39,14 @@ Return JSON with exactly these keys:
 - "angry": true ONLY if the reports describe clear wrongdoing that would make ordinary viewers angry: corruption,
   scams, negligence that hurt people, broken promises, injustice, attacks on the country. false for ordinary
   politics and speeches, weather, disasters without negligence, science, sport, business and achievements.
+- "tragedy": true if the story involves deaths, injuries, disasters, violence, crimes against people or children,
+  or war casualties. Those are always told seriously: no jokes, no memes.
+- "music": the background-music mood that fits this story: "tense" (corruption, scams, attacks, war, anger),
+  "upbeat" (achievements, wins, good news), "chill" (ordinary politics, business, weather, science),
+  "suspense" (unexplained or mysterious things), or "none" (any tragedy: silence is more respectful).
+- "meme_line": ONLY if tragedy is false: a short, funny meme-style sticker line (max 6 words, written exactly as it
+  appears in your script) in internet / Gen Z Hinglish, e.g. "सीन बन गया भाई!", "ये क्या हो रहा है भाई!", "L टेक है ये".
+  Put that same line as its own sentence in the MIDDLE of "script". Use "" for tragedies.
 - "image_queries": 2 or 3 short English photo-search phrases for this story (e.g. "Ramlila Maidan rally",
   "Arunachal Pradesh border", "GSLV rocket launch"). Places, events, objects; never private individuals.
 - "why_it_matters": one line, max 15 words, the practical significance of the story, only as far as the reports
@@ -53,7 +61,7 @@ Return JSON with exactly these keys:
 
 {style}
 
-LANGUAGE: write "headline", "fact", "claim", "script", "why_it_matters" and "public_reaction" in {language}
+LANGUAGE: write "headline", "fact", "claim", "script", "why_it_matters", "meme_line" and "public_reaction" in {language}
 "visuals" stay in English (they are Wikipedia titles).
 Outlet names in "outlets" and "reported_by" must be copied exactly (in English) from the brackets below.
 
@@ -101,7 +109,8 @@ def wrong_language(res, lang, keys=("headline", "script")):
 
 def _all_text(res):
     parts = [res.get("headline", ""), res.get("script", ""), str(res.get("short_script") or ""),
-             str(res.get("public_reaction") or ""), str(res.get("why_it_matters") or "")]
+             str(res.get("public_reaction") or ""), str(res.get("why_it_matters") or ""),
+             str(res.get("meme_line") or "")]
     parts += [f.get("fact", "") for f in res.get("confirmed_facts") or []]
     parts += [d.get("claim", "") for d in res.get("disputed") or []]
     return " ".join(str(p) for p in parts)
@@ -114,6 +123,7 @@ def _clean(res, lang):
     res["short_script"] = fix(str(res.get("short_script") or ""))
     res["public_reaction"] = fix(str(res.get("public_reaction") or ""))
     res["why_it_matters"] = fix(str(res.get("why_it_matters") or ""))
+    res["meme_line"] = fix(str(res.get("meme_line") or ""))
     for f in res.get("confirmed_facts") or []:
         f["fact"] = fix(f.get("fact", ""))
     for d in res.get("disputed") or []:
@@ -141,7 +151,7 @@ def _fix_spelling(res, fixes):
         for wrong, right in fixes.items():
             text = text.replace(wrong, right)
         return text
-    for key in ("headline", "script", "short_script", "public_reaction", "why_it_matters"):
+    for key in ("headline", "script", "short_script", "public_reaction", "why_it_matters", "meme_line"):
         if res.get(key):
             res[key] = fix(str(res[key]))
     for f in res.get("confirmed_facts") or []:
@@ -149,6 +159,23 @@ def _fix_spelling(res, fixes):
     for d in res.get("disputed") or []:
         d["claim"] = fix(d.get("claim", ""))
     return res
+
+
+def _music_and_meme(res):
+    """Pick the music mood (silence for tragedies) and keep the meme sticker line only where it is allowed."""
+    from .sound import MUSIC_STYLES
+    tragedy = bool(res.get("tragedy")) or (res.get("mood") == "bad" and not res.get("angry"))
+    music = res.get("music") if res.get("music") in MUSIC_STYLES else None
+    if music is None:  # LLM gave nothing usable: derive it from the mood
+        music = ("tense" if res.get("angry") else "upbeat" if res.get("mood") == "good" else "chill")
+    if tragedy:
+        music = "none"
+    meme = "" if tragedy else str(res.get("meme_line") or "").strip()
+    script = str(res.get("script") or "")
+    pos = script.find(meme) / max(len(script), 1) if meme and meme in script else 0.5
+    if len(meme.split()) > 8:
+        meme = ""
+    return {"tragedy": tragedy, "music": music, "meme_line": meme, "meme_at": round(min(max(pos, 0.2), 0.8), 2)}
 
 
 def _package(res, story, k, fixes=None):
@@ -162,6 +189,7 @@ def _package(res, story, k, fixes=None):
             "why_it_matters": str(res.get("why_it_matters") or "").strip(),
             "mood": res.get("mood") if res.get("mood") in ("good", "bad", "neutral") else "neutral",
             "angry": bool(res.get("angry", False)),
+            **_music_and_meme(res),
             "image_queries": [str(q) for q in (res.get("image_queries") or [])][:3],
             "visuals": [str(v) for v in (res.get("visuals") or [])][:4],
             "about_india": bool(res.get("about_india", True)),
