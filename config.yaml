@@ -140,7 +140,7 @@ reels:
     "Dancing plague of 1518", "Green children of Woolpit", "Bloop", "Easter Island"]
 
 instagram:
-  api_version: "v23.0"
+  api_version: "v26.0"
 
 # Trending + public opinion
 trends:
