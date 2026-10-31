@@ -320,8 +320,21 @@ def render_episode(episode, cfg, out_dir):
 
     mouths = anchor_mod.mouth_track(audio, sr, fps)
     blinks = anchor_mod.blink_track(n_frames, fps)
-    sprites = anchor_mod.sprites(s(420), s(520), persona(cfg)["character"]) if mode == "puppet" else None
+    pz = persona(cfg)
+    sprites = anchor_mod.sprites(s(420), s(520), pz["character"]) if mode == "puppet" else None
     pips = _pip_sprites(sprites, s(190)) if sprites else None
+    # mood effects: fire for bad news, ice (+ sunglasses on the photo lion) for good news
+    fx = None
+    if pz.get("mood_effects") and sprites is not None:
+        from .effects import Particles, fire_ring, ice_ring, vignette
+        ring_d = s(190) + 12
+        cool = anchor_mod.sprites(s(420), s(520), pz["character"], cool=True)
+        fx = {"fire": fire_ring(ring_d, s(70)), "ice": ice_ring(ring_d, s(46)), "ring_d": ring_d,
+              "pad": {"bad": s(70), "good": s(46)},
+              "vig": {"bad": vignette(W, H, (200, 30, 0), 120), "good": vignette(W, H, (60, 160, 255), 110)},
+              "parts": {"bad": Particles(W, H, "embers"), "good": Particles(W, H, "snow")},
+              "cool": cool, "cool_pips": _pip_sprites(cool, s(190))}
+    shake = pz.get("shake", False)
     anchor_pos = (s(830), s(92))
     pip_pos = (W - s(232), H - s(52) - s(222))
 
@@ -376,6 +389,10 @@ def render_episode(episode, cfg, out_dir):
                 L.story_panel(layer, seg, stories.index(seg) + 1, len(stories), n_facts=stage[0], rest=stage[1])
             if mode != "puppet":
                 L.desk(layer)
+            if pz["character"] == "lion_photo":
+                dd = ImageDraw.Draw(layer)
+                small.draw(dd, (W - small.length(dd, anchor_mod.LION_PHOTO_CREDIT) - s(14), s(64)),
+                           anchor_mod.LION_PHOTO_CREDIT, (220, 220, 220), stroke=2, stroke_fill=(0, 0, 0))
         cache[key] = layer
         return layer
 
@@ -405,21 +422,37 @@ def render_episode(episode, cfg, out_dir):
                 img = Image.blend(img, nxt, (p - 0.92) / 0.08)
             img = img.convert("RGBA")
             img.alpha_composite(card(si, stage))
-            credit = "Photo: " + imgs[k][1]
+            credit = "Photo: " + imgs[k][1] + (f"  |  {anchor_mod.LION_PHOTO_CREDIT}" if pz["character"] == "lion_photo"
+                                               else "")
             dd = ImageDraw.Draw(img)
             cw = small.length(dd, credit)
             small.draw(dd, (W - cw - s(14), s(64)), credit, (230, 230, 230), stroke=2, stroke_fill=(0, 0, 0))
-            pip = pips[(mouth, blink)]
-            img.alpha_composite(pip, pip_pos)
+            mood = seg.get("mood") if fx else None
+            pip = (fx["cool_pips"] if mood == "good" else pips)[(mouth, blink)]
+            jx, jy = ((i * 7) % 9 - 4, (i * 5) % 7 - 3) if shake and mouth == 2 else (0, 0)
+            pos = (pip_pos[0] + s(jx), pip_pos[1] + s(jy))
+            if mood in ("bad", "good"):
+                img.alpha_composite(fx["vig"][mood])
+                pad = fx["pad"][mood]
+                ring = fx["fire"][i % len(fx["fire"])] if mood == "bad" else fx["ice"]
+                img.alpha_composite(ring, (pos[0] - pad, pos[1] - pad))
+                fx["parts"][mood].draw(img, tl)
+            img.alpha_composite(pip, pos)
         else:
+            mood = seg.get("mood") if fx and seg["kind"] == "story" else None
             key = ("frame", stage, mouth, blink)
             if key not in cache:
                 img = card(si, stage).copy()
                 if sprites is not None:
-                    img.alpha_composite(sprites[(mouth, blink)], anchor_pos)
+                    sp = (fx["cool"] if mood == "good" else sprites)[(mouth, blink)]
+                    img.alpha_composite(sp, anchor_pos)
                     L.desk(img)
+                if mood in ("bad", "good"):
+                    img.alpha_composite(fx["vig"][mood])
                 cache[key] = img
             img = cache[key].copy()
+            if mood in ("bad", "good"):
+                fx["parts"][mood].draw(img, tl)
 
         if seg["kind"] == "story" and tl < TRANSITION:  # branded wipe: panel sweeps in, then out
             x = tl / TRANSITION

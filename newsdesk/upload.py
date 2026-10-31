@@ -55,6 +55,11 @@ def build_metadata(episode, cfg):
             lines.append(f"• {src['outlet']}: {src['url']}")
         if s.get("reaction_links"):
             lines.append(t["desc_reactions"] + ": " + " ".join(f"{r['sub']} {r['url']}" for r in s["reaction_links"]))
+    from .persona import persona
+    if persona(cfg)["character"] == "lion_photo":
+        lines += ["", "Babbar Bhai: adapted from \"Snarling lion\" by Aurelio Arias, CC BY-SA 3.0 "
+                  "(https://commons.wikimedia.org/wiki/File:Snarling_lion.jpg). The animated anchor is shared under "
+                  "CC BY-SA 3.0."]
     lines += ["", t["desc_how"], t["desc_how_text"].format(k=cfg["editor"]["confirm_threshold"]),
               "", t["desc_disclosure"], t["desc_disclosure_text"], "", t["hashtags"]]
     desc = "\n".join(lines)

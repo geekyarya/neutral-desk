@@ -35,6 +35,8 @@ class Speaker:
         self.sr = self.voice.config.sample_rate
         self.pitch = float(pz.get("pitch", 1.0))
         self.fx = pz.get("voice_fx", "")
+        self.emphasis = pz.get("emphasis", False)
+        self.shout = SynthesisConfig(length_scale=pz.get("length_scale", t["length_scale"]) * 0.9)
 
     def _pitch(self, audio):
         """Raise the voice's pitch without changing its speed (FFmpeg: resample up, then slow back down)."""
@@ -47,8 +49,19 @@ class Speaker:
 
     def say(self, text, path, pause=0.0):
         """Write text as speech to a wav file; returns the duration in seconds."""
-        chunks = [c.audio_int16_array for c in self.voice.synthesize(text, syn_config=self.syn)]
-        speech = np.concatenate(chunks)
+        if self.emphasis:  # shout the exclamations: a bit faster and louder than the rest
+            import re
+            parts = []
+            for sent in [x for x in re.split(r"(?<=[!?।.])\s+", text) if x.strip()]:
+                loud = sent.rstrip().endswith("!")
+                audio = np.concatenate([c.audio_int16_array for c in
+                                        self.voice.synthesize(sent, syn_config=self.shout if loud else self.syn)])
+                if loud:
+                    audio = np.clip(audio.astype(np.int32) * 1.35, -32767, 32767).astype(np.int16)
+                parts += [audio, np.zeros(int(self.sr * 0.06), dtype=np.int16)]
+            speech = np.concatenate(parts)
+        else:
+            speech = np.concatenate([c.audio_int16_array for c in self.voice.synthesize(text, syn_config=self.syn)])
         if abs(self.pitch - 1.0) > 0.01 or self.fx:
             speech = self._pitch(speech)
         audio = np.concatenate([speech, np.zeros(int(self.sr * pause), dtype=np.int16)])

@@ -225,11 +225,65 @@ def draw_lion(mouth=0, blink=False, w=420, h=520):
     return out
 
 
-CHARACTERS = {"anchor": draw_anchor, "parrot": draw_parrot, "lion": draw_lion}
+LION_PHOTO_CREDIT = "Lion: Aurelio Arias, CC BY-SA 3.0"
+_lion_cache = {}
 
 
-def sprites(w=420, h=520, character="anchor"):
+def _lion_base():
+    """The snarling-lion photo, with extra room below the chin so the jaw can drop."""
+    if "base" not in _lion_cache:
+        from pathlib import Path
+        img = Image.open(Path(__file__).resolve().parent.parent / "assets" / "anchor" / "snarling_lion.jpg").convert("RGB")
+        w, h = img.size
+        ext = Image.new("RGB", (w, h + 90))
+        ext.paste(img, (0, 0))
+        ext.paste(img.crop((0, h - 1, w, h)).resize((w, 90)), (0, h))  # stretch the last row downwards
+        _lion_cache["base"] = ext
+        jaw = Image.new("L", ext.size, 0)
+        ImageDraw.Draw(jaw).polygon([(345, 604), (548, 604), (568, 652), (545, 708), (452, 732), (352, 708),
+                                     (328, 652)], fill=255)
+        _lion_cache["jaw"] = jaw.filter(ImageFilter.GaussianBlur(5))
+    return _lion_cache["base"], _lion_cache["jaw"]
+
+
+def draw_lion_photo(mouth=0, blink=False, w=420, h=520, cool=False):
+    """Babbar Bhai from a real lion photo: the lower jaw drops with the voice; 'cool' adds sunglasses."""
+    base, jaw = _lion_base()
+    gap = (0, 16, 34)[mouth]
+    img = base.copy()
+    if gap:
+        d = ImageDraw.Draw(img)
+        d.ellipse([372, 600, 528, 618 + gap * 1.6], fill=(25, 8, 8))  # dark inside of the mouth
+        d.ellipse([410, 610 + gap * 0.7, 490, 630 + gap * 1.3], fill=(150, 60, 70))  # tongue
+        moved = Image.new("RGB", img.size)
+        moved.paste(base, (0, gap))
+        mask = Image.new("L", img.size, 0)
+        mask.paste(jaw, (0, gap))
+        img.paste(moved, (0, 0), mask)
+    if cool:  # sunglasses for good news
+        d = ImageDraw.Draw(img)
+        for ex in (352, 548):
+            d.rounded_rectangle([ex - 72, 330, ex + 72, 400], radius=28, fill=(15, 15, 20), outline=(60, 60, 70),
+                                width=4)
+            d.polygon([(ex - 50, 342), (ex - 20, 342), (ex - 44, 368)], fill=(90, 110, 140))  # shine
+        d.line([(424, 352), (476, 352)], fill=(15, 15, 20), width=10)
+    ch = 700  # crop to the real photo (no stretched rows), keeping the sprite's aspect ratio
+    cw = int(ch * w / h)
+    face = img.crop((450 - cw // 2, 20, 450 + cw // 2, 20 + ch)).resize((w, h), Image.LANCZOS)
+    out = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    mask = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, w - 1, h - 1], radius=28, fill=255)
+    out.paste(face, (0, 0), mask)
+    return out
+
+
+CHARACTERS = {"anchor": draw_anchor, "parrot": draw_parrot, "lion": draw_lion, "lion_photo": draw_lion_photo}
+
+
+def sprites(w=420, h=520, character="anchor", cool=False):
     draw = CHARACTERS.get(character, draw_anchor)
+    if character == "lion_photo":
+        return {(m, b): draw_lion_photo(m, b, w, h, cool) for m in (0, 1, 2) for b in (False, True)}
     return {(m, b): draw(m, b, w, h) for m in (0, 1, 2) for b in (False, True)}
 
 

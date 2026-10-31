@@ -34,6 +34,8 @@ Return JSON with exactly these keys:
   Mention disputed claims only with attribution ("According to Dawn, ..." / "This could not be independently
   confirmed"). No opinions, no sensational words (e.g. "shocking", "slams", "massive"), no speculation.
   Do not greet or sign off.
+- "mood": "good" (achievements, relief, progress), "bad" (war, attacks, deaths, scams, failures, crises) or
+  "neutral".
 - "why_it_matters": one line, max 15 words, the practical significance of the story, only as far as the reports
   support it. "" if unclear.
 - "visuals": 2 to 4 English Wikipedia article titles that illustrate the story with photos: the specific
@@ -153,6 +155,7 @@ def _package(res, story, k, fixes=None):
             "public_reaction": reaction,
             "short_script": str(res.get("short_script") or "").strip(),
             "why_it_matters": str(res.get("why_it_matters") or "").strip(),
+            "mood": res.get("mood") if res.get("mood") in ("good", "bad", "neutral") else "neutral",
             "visuals": [str(v) for v in (res.get("visuals") or [])][:4],
             "about_india": bool(res.get("about_india", True)),
             "confirmed_facts": confirmed, "disputed": disputed}
