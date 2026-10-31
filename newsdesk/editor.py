@@ -36,6 +36,10 @@ Return JSON with exactly these keys:
   Do not greet or sign off.
 - "mood": "good" (achievements, relief, progress), "bad" (war, attacks, deaths, scams, failures, crises) or
   "neutral".
+- "angry": true if this story would make ordinary viewers angry (corruption, scams, negligence that hurt people,
+  broken promises, lame official excuses, injustice, attacks on the country, price rises); false otherwise.
+- "image_queries": 2 or 3 short English photo-search phrases for this story (e.g. "Ramlila Maidan rally",
+  "Arunachal Pradesh border", "GSLV rocket launch"). Places, events, objects; never private individuals.
 - "why_it_matters": one line, max 15 words, the practical significance of the story, only as far as the reports
   support it. "" if unclear.
 - "visuals": 2 to 4 English Wikipedia article titles that illustrate the story with photos: the specific
@@ -156,6 +160,8 @@ def _package(res, story, k, fixes=None):
             "short_script": str(res.get("short_script") or "").strip(),
             "why_it_matters": str(res.get("why_it_matters") or "").strip(),
             "mood": res.get("mood") if res.get("mood") in ("good", "bad", "neutral") else "neutral",
+            "angry": bool(res.get("angry", False)),
+            "image_queries": [str(q) for q in (res.get("image_queries") or [])][:3],
             "visuals": [str(v) for v in (res.get("visuals") or [])][:4],
             "about_india": bool(res.get("about_india", True)),
             "confirmed_facts": confirmed, "disputed": disputed}

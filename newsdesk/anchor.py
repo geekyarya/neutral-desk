@@ -164,86 +164,110 @@ def draw_parrot(mouth=0, blink=False, w=420, h=520):
 
 
 def draw_lion(mouth=0, blink=False, w=420, h=520, cool=False):
-    """Babbar Bhai, a cartoon lion anchor in a suit.
-    cool=True: calm, sunglasses on.  cool=False: shouting, face red with anger, furious brows, vein and steam."""
+    """Babbar Bhai: a sleek cartoon lion anchor in a suit.
+    cool=True: calm, aviator sunglasses.  cool=False: angry, red face, furious almond eyes, vein and steam."""
     import math
     img = Image.new("RGBA", (w * S, h * S), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    cx, hy = w // 2, 200
-    line = (60, 30, 15)
+    cx, hy = w // 2, 196
+    line = (55, 25, 12)
     angry = not cool
-    face = (232, 92, 62) if angry else (240, 175, 70)
-    ear = (215, 80, 55) if angry else (230, 160, 60)
-    mane_out = (140, 45, 25) if angry else (150, 75, 28)
-    mane_in = (165, 60, 30) if angry else (180, 95, 38)
-    muzzle = (250, 175, 150) if angry else (252, 225, 178)
+    face = (226, 96, 64) if angry else (236, 170, 74)
+    face_lt = (246, 160, 130) if angry else (250, 220, 165)
+    mane_dark = (120, 38, 22) if angry else (122, 62, 24)
+    mane = (160, 58, 30) if angry else (168, 92, 34)
 
-    def oval(x, y, rx, ry, fill, outline=line, width=4):
-        d.ellipse([(x - rx) * S, (y - ry) * S, (x + rx) * S, (y + ry) * S], fill=fill,
-                  outline=outline, width=width * S if outline else 0)
+    def P(pts):
+        return [(x * S, y * S) for x, y in pts]
 
-    # suit, shirt, tie, lapels
-    _poly(d, [(cx - 182, h), (cx - 168, 400), (cx - 92, 356), (cx + 92, 356), (cx + 168, 400), (cx + 182, h)],
-          (38, 42, 58))
-    _poly(d, [(cx - 50, 356), (cx + 50, 356), (cx, 452)], (242, 242, 248))
-    _poly(d, [(cx - 50, 356), (cx - 98, 366), (cx - 60, 500), (cx - 10, 452)], (52, 58, 78))
-    _poly(d, [(cx + 50, 356), (cx + 98, 366), (cx + 60, 500), (cx + 10, 452)], (52, 58, 78))
-    _poly(d, [(cx - 13, 364), (cx + 13, 364), (cx + 17, 440), (cx, 464), (cx - 17, 440)], (200, 24, 34))
-    # fluffy mane: two rings of rounded tufts
-    for r, n, col, sz in ((168, 22, mane_out, 40), (140, 18, mane_in, 36)):
+    def shape(t_steps, fn):
+        return [fn(2 * math.pi * k / t_steps) for k in range(t_steps)]
+
+    def head_pt(t, scale=1.0):
+        low = max(0.0, math.sin(t))  # 0 on top half, up to 1 at the chin
+        rx = 98 * (1 - 0.5 * low ** 1.4) * scale
+        ry = (98 + 42 * low) * scale
+        return cx + rx * math.cos(t), hy + ry * math.sin(t)
+
+    # suit, shirt, lapels, tie
+    _poly(d, [(cx - 182, h), (cx - 168, 404), (cx - 92, 362), (cx + 92, 362), (cx + 168, 404), (cx + 182, h)],
+          (34, 38, 54))
+    _poly(d, [(cx - 46, 362), (cx + 46, 362), (cx, 452)], (242, 242, 248))
+    _poly(d, [(cx - 46, 362), (cx - 96, 372), (cx - 58, 505), (cx - 8, 452)], (50, 56, 76))
+    _poly(d, [(cx + 46, 362), (cx + 96, 372), (cx + 58, 505), (cx + 8, 452)], (50, 56, 76))
+    _poly(d, [(cx - 12, 370), (cx + 12, 370), (cx + 16, 444), (cx, 466), (cx - 16, 444)], (200, 24, 34))
+    # flowing mane: pointed locks swept back, longer on top and sides, framing a narrow chin
+    for col, sc, n, twist in ((mane_dark, 1.62, 24, 0.10), (mane, 1.42, 22, 0.16)):
+        pts = []
         for k in range(n):
-            a = 2 * math.pi * (k + 0.5 * (r == 140)) / n
-            oval(cx + r * math.cos(a), hy + 12 + r * 0.95 * math.sin(a), sz, sz, col, outline=None)
-    oval(cx, hy + 12, 140, 134, mane_in, outline=None)
-    # ears + face with soft cheek shading
-    for ex in (cx - 92, cx + 92):
-        oval(ex, hy - 92, 32, 32, ear)
-        oval(ex, hy - 90, 16, 16, (250, 200, 160), outline=None)
-    oval(cx, hy + 15, 114, 114, face)
-    oval(cx - 70, hy + 45, 30, 20, (255, 120, 110) if not angry else (200, 40, 30), outline=None)
-    oval(cx + 70, hy + 45, 30, 20, (255, 120, 110) if not angry else (200, 40, 30), outline=None)
-    oval(cx, hy + 72, 72, 50, muzzle, outline=None)
+            t = 2 * math.pi * k / n
+            tt = t + twist
+            for frac, r in ((0.0, 1.0), (0.5, 1.22)):  # valley, then tip
+                ang = tt + frac * 2 * math.pi / n
+                short = 1 - 0.22 * max(0.0, math.sin(ang)) ** 2  # shorter under the chin so the tie shows
+                bx, by = head_pt(ang, sc * (r if frac else 1.0) * short)
+                pts.append((bx, by + 10))
+        _poly(d, pts, col)
+    # ears
+    for side in (-1, 1):
+        ex = cx + side * 74
+        _poly(d, [(ex - 26, hy - 64), (ex + side * 6, hy - 118), (ex + 26, hy - 70)], face)
+        _poly(d, [(ex - 12, hy - 72), (ex + side * 4, hy - 102), (ex + 12, hy - 76)], face_lt)
+    # tapered face with an outline, lighter snout and nose bridge
+    d.polygon(P(shape(72, lambda t: head_pt(t, 1.04))), fill=line)
+    d.polygon(P(shape(72, head_pt)), fill=face)
+    d.polygon(P([(cx - 16, hy - 70), (cx + 16, hy - 70), (cx + 30, hy + 40), (cx - 30, hy + 40)]), fill=face_lt)
+    d.ellipse([(cx - 58) * S, (hy + 30) * S, (cx + 58) * S, (hy + 124) * S], fill=face_lt)
     for k in (-1, 1):  # whisker dots
         for j in range(3):
-            oval(cx + k * (34 + j * 12), hy + 72 + (j % 2) * 10, 3, 3, (110, 60, 40), outline=None)
-    # eyes / sunglasses / brows
+            r = 3
+            x, y = cx + k * (26 + j * 11), hy + 78 + (j % 2) * 9
+            d.ellipse([(x - r) * S, (y - r) * S, (x + r) * S, (y + r) * S], fill=(110, 60, 40))
+    # eyes: aviator sunglasses when calm, furious almond eyes when angry
     if cool:
         for side in (-1, 1):
-            ex = cx + side * 46
-            d.rounded_rectangle([(ex - 40) * S, (hy - 26) * S, (ex + 40) * S, (hy + 14) * S], radius=16 * S,
-                                fill=(18, 18, 24), outline=(70, 70, 80), width=3 * S)
-            _poly(d, [(ex - 28, hy - 18), (ex - 8, hy - 18), (ex - 24, hy + 2)], (95, 115, 150))  # shine
-            _line(d, [(ex - 30, hy - 44), (ex + 30, hy - 46)], (100, 50, 20), 10)  # relaxed brows
-        _line(d, [(cx - 6, hy - 10), (cx + 6, hy - 10)], (18, 18, 24), 7)
+            ex = cx + side * 42
+            d.polygon(P([(ex - side * 6, hy - 30), (ex + side * 40, hy - 26), (ex + side * 34, hy + 6),
+                         (ex + side * 14, hy + 14), (ex - side * 6, hy + 4)]), fill=(16, 16, 22))
+            d.polygon(P([(ex + side * 4, hy - 22), (ex + side * 16, hy - 22), (ex + side * 6, hy - 6)]),
+                      fill=(95, 115, 150))
+            _line(d, [(ex - side * 4, hy - 46), (ex + side * 40, hy - 44)], (95, 45, 18), 9)  # relaxed brows
+        _line(d, [(cx - 8, hy - 24), (cx + 8, hy - 24)], (16, 16, 22), 5)
     else:
         for side in (-1, 1):
-            ex = cx + side * 45
+            ex = cx + side * 42
             if blink:
-                _line(d, [(ex - 20, hy - 5), (ex + 20, hy - 5)], line, 6)
+                _line(d, [(ex - 20, hy - 6), (ex + 20, hy - 6)], line, 6)
             else:
-                oval(ex, hy - 5, 21, 17, (255, 255, 255))
-                oval(ex - side * 4, hy - 1, 8, 8, (20, 15, 10), outline=None)
-                _line(d, [(ex - 14, hy - 12), (ex - 4, hy - 4)], (230, 60, 60), 2)  # bloodshot
-            _line(d, [(ex + side * 36, hy - 54), (ex - side * 24, hy - 20)], (90, 25, 10), 14)  # furious brows
-        vx, vy = cx + 72, hy - 72  # anger vein
+                d.polygon(P([(ex - side * 22, hy - 4), (ex, hy - 18), (ex + side * 24, hy - 12), (ex + side * 18, hy + 4),
+                             (ex - side * 2, hy + 8)]), fill=(255, 245, 200))
+                d.ellipse([(ex - 7) * S, (hy - 11) * S, (ex + 7) * S, (hy + 3) * S], fill=(20, 15, 10))
+            _line(d, [(ex + side * 34, hy - 46), (ex - side * 24, hy - 18)], (80, 20, 8), 12)  # furious brows
+        vx, vy = cx + 64, hy - 70  # anger vein
         for dx, dy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
-            _line(d, [(vx + dx * 6, vy + dy * 6), (vx + dx * 18, vy + dy * 6), (vx + dx * 18, vy + dy * 18)],
-                  (255, 230, 60), 6)
-        for sx, sy in ((cx - 128, hy - 128), (cx + 128, hy - 128)):  # steam puffs from the ears
-            for j, (ox, oy, r) in enumerate(((0, 0, 16), (-12 if sx < cx else 12, -22, 13), (0, -42, 10))):
-                oval(sx + ox, sy + oy, r, r, (245, 245, 250), outline=None)
-    # nose + mouth (smirk when calm and closed, roaring when open)
-    _poly(d, [(cx - 22, hy + 42), (cx + 22, hy + 42), (cx, hy + 64)], (95, 45, 35))
-    gap = (6, 22, 36)[mouth]
-    if mouth == 0 and cool:
-        _line(d, [(cx - 34, hy + 84), (cx, hy + 92), (cx + 34, hy + 80)], line, 5)
+            _line(d, [(vx + dx * 5, vy + dy * 5), (vx + dx * 15, vy + dy * 5), (vx + dx * 15, vy + dy * 15)],
+                  (255, 230, 60), 5)
+        for sx, sy in ((cx - 112, hy - 112), (cx + 112, hy - 112)):  # steam from the ears
+            for ox, oy, r in ((0, 0, 15), (-11 if sx < cx else 11, -21, 12), (0, -40, 9)):
+                x, y = sx + ox, sy + oy
+                d.ellipse([(x - r) * S, (y - r) * S, (x + r) * S, (y + r) * S], fill=(245, 245, 250))
+    # nose + mouth
+    d.polygon(P([(cx - 22, hy + 40), (cx + 22, hy + 40), (cx + 8, hy + 60), (cx - 8, hy + 60)]), fill=(80, 35, 28))
+    gap = (5, 20, 34)[mouth]
+    if mouth == 0:
+        if cool:  # smirk
+            _line(d, [(cx - 30, hy + 84), (cx - 4, hy + 90), (cx + 30, hy + 78)], line, 5)
+        else:  # clenched snarl
+            _line(d, [(cx - 30, hy + 84), (cx, hy + 80), (cx + 30, hy + 84)], line, 6)
+            for tx in (cx - 22, cx + 14):
+                _poly(d, [(tx, hy + 82), (tx + 9, hy + 82), (tx + 4, hy + 92)], (255, 255, 255))
     else:
-        d.chord([(cx - 50) * S, (hy + 66) * S, (cx + 50) * S, (hy + 74 + gap * 1.5) * S], 0, 180,
+        d.chord([(cx - 44) * S, (hy + 70) * S, (cx + 44) * S, (hy + 78 + gap * 1.5) * S], 0, 180,
                 fill=(120, 20, 25), outline=line, width=4 * S)
-        if mouth:
-            for tx in (cx - 30, cx + 18):  # fangs
-                _poly(d, [(tx, hy + 72), (tx + 12, hy + 72), (tx + 6, hy + 72 + 10 + gap / 4)], (255, 255, 255))
-            oval(cx, hy + 78 + gap * 0.9, 22, 6 + gap / 6, (230, 90, 100), outline=None)
+        for tx in (cx - 28, cx + 18):  # fangs
+            _poly(d, [(tx, hy + 76), (tx + 11, hy + 76), (tx + 5, hy + 76 + 9 + gap / 4)], (255, 255, 255))
+        d.ellipse([(cx - 20) * S, (hy + 76 + gap * 0.8) * S, (cx + 20) * S, (hy + 88 + gap) * S],
+                  fill=(230, 90, 100))
     img = img.resize((w, h), Image.LANCZOS)
     shadow = Image.new("RGBA", img.size, (0, 0, 0, 0))
     shadow.putalpha(img.getchannel("A").point(lambda a: a * 0.35).filter(ImageFilter.GaussianBlur(10)))

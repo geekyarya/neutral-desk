@@ -38,7 +38,8 @@ class Speaker:
         self.emphasis = pz.get("emphasis", False)
         self.strong_words = pz.get("strong_words", [])
         self.last_spans = []
-        self.shout = SynthesisConfig(length_scale=pz.get("length_scale", t["length_scale"]) * 0.9)
+        self.shout = SynthesisConfig(length_scale=pz.get("length_scale", t["length_scale"]) * 0.95,
+                                     noise_scale=0.85, noise_w_scale=1.1)  # more expressive intonation
 
     def _pitch(self, audio):
         """Raise the voice's pitch without changing its speed (FFmpeg: resample up, then slow back down)."""
@@ -46,6 +47,16 @@ class Speaker:
         p = subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "s16le", "-ar", str(self.sr), "-ac", "1",
                             "-i", "-", "-af", f"asetrate={int(self.sr * self.pitch)},aresample={self.sr},"
                             f"atempo={1 / self.pitch:.4f}" + (f",{self.fx}" if self.fx else ""), "-f", "s16le", "-"],
+                           input=audio.tobytes(), capture_output=True, check=True)
+        return np.frombuffer(p.stdout, dtype=np.int16)
+
+    def _shout(self, audio):
+        """Make a line sound shouted: higher and faster (like raising your voice), much louder, a rough edge."""
+        import subprocess
+        p = subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "s16le", "-ar", str(self.sr), "-ac", "1",
+                            "-i", "-", "-af", f"asetrate={int(self.sr * 1.12)},aresample={self.sr},"
+                            "highpass=f=180,equalizer=f=3000:t=q:w=1:g=8,volume=9dB,asoftclip=type=tanh,"
+                            "alimiter=limit=0.97", "-f", "s16le", "-"],
                            input=audio.tobytes(), capture_output=True, check=True)
         return np.frombuffer(p.stdout, dtype=np.int16)
 
@@ -60,7 +71,7 @@ class Speaker:
                 audio = np.concatenate([c.audio_int16_array for c in
                                         self.voice.synthesize(sent, syn_config=self.shout if loud else self.syn)])
                 if loud:
-                    audio = np.clip(audio.astype(np.int32) * 1.35, -32767, 32767).astype(np.int16)
+                    audio = self._shout(audio)
                     self.last_spans.append((round(pos / self.sr, 2), round((pos + len(audio)) / self.sr, 2)))
                 parts += [audio, np.zeros(int(self.sr * 0.06), dtype=np.int16)]
                 pos += len(audio) + int(self.sr * 0.06)

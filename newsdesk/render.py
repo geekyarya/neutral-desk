@@ -265,6 +265,27 @@ def _kenburns(src, p, W, H, flip):
     return src.crop((x0, y0, x0 + cw, y0 + ch)).resize((W, H), Image.BILINEAR)
 
 
+class _VideoReader:
+    """Streams frames of a (looping) video clip, already sized to the frame."""
+
+    def __init__(self, path, W, H, fps):
+        self.W, self.H = W, H
+        self.p = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-stream_loop", "-1", "-i", path, "-vf",
+                                   f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps={fps}",
+                                   "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], stdout=subprocess.PIPE,
+                                  stderr=subprocess.DEVNULL)
+        self.last = Image.new("RGB", (W, H))
+
+    def read(self):
+        raw = self.p.stdout.read(self.W * self.H * 3)
+        if len(raw) == self.W * self.H * 3:
+            self.last = Image.frombytes("RGB", (self.W, self.H), raw)
+        return self.last
+
+    def close(self):
+        self.p.kill()
+
+
 def _pip_sprites(sprites, d, face_y=None):
     """Round picture-in-picture versions of the anchor (head and shoulders) for photo segments.
     face_y: vertical centre of the face as a fraction of the sprite height (photo lion: lower down)."""
@@ -310,7 +331,8 @@ def render_episode(episode, cfg, out_dir):
     if vcfg.get("music", True):
         from .sound import mix
         mixed = mix(audio, sr, [st for st, sg in zip(starts, segs) if sg["kind"] == "story"],
-                    vcfg.get("music_volume", 0.12), persona(cfg).get("music", "calm"))
+                    vcfg.get("music_volume", 0.12), persona(cfg).get("music", "calm"),
+                    hits=[st + 0.05 for st, sg in zip(starts, segs) if sg.get("angry")])
         audio_path = out_dir / "audio" / "episode_mix.wav"
         with wave.open(str(audio_path), "wb") as w:
             w.setnchannels(1)
@@ -338,17 +360,20 @@ def render_episode(episode, cfg, out_dir):
     anchor_pos = (s(830), s(92))
     pip_pos = (W - pip_d - s(42), H - s(52) - pip_d - s(32))
 
-    # photos for each story (fetched earlier by media.add_story_images)
+    # visuals for each story (fetched earlier by media.add_story_images): a video clip first, then photos
     photos = {}
     for seg in stories:
-        imgs = []
+        items = [("video", str(out_dir / v["path"]), v["credit"]) for v in seg.get("videos") or []
+                 if (out_dir / v["path"]).exists()]
         for im in seg.get("images") or []:
             try:
-                imgs.append((_cover(Image.open(out_dir / im["path"]), int(W * 1.12), int(H * 1.12)), im["credit"]))
+                items.append(("img", _cover(Image.open(out_dir / im["path"]), int(W * 1.12), int(H * 1.12)),
+                              im["credit"]))
             except OSError:
                 pass
-        if imgs and sprites is not None:
-            photos[seg["id"]] = imgs
+        if items and sprites is not None:
+            photos[seg["id"]] = items
+    videos = {}  # open video readers, one per story at a time
 
     # dark fade on the left of photos so the text stays readable
     xs = np.linspace(0, 1, W)
@@ -412,17 +437,28 @@ def render_episode(episode, cfg, out_dir):
             slot = dur / len(imgs)
             k = min(int(tl / slot), len(imgs) - 1)
             p = (tl - k * slot) / slot
-            img = _kenburns(imgs[k][0], p, W, H, k % 2 == 1)
-            if p > 0.92 and k + 1 < len(imgs):  # crossfade into the next photo
-                nxt = _kenburns(imgs[k + 1][0], 0.0, W, H, (k + 1) % 2 == 1)
-                img = Image.blend(img, nxt, (p - 0.92) / 0.08)
+
+            def visual(j, prog):
+                kind, src, _ = imgs[j]
+                if kind == "video":
+                    if (seg["id"], j) not in videos:
+                        for rd in videos.values():
+                            rd.close()
+                        videos.clear()
+                        videos[(seg["id"], j)] = _VideoReader(src, W, H, fps)
+                    return videos[(seg["id"], j)].read()
+                return _kenburns(src, prog, W, H, j % 2 == 1)
+
+            img = visual(k, p)
+            if p > 0.92 and k + 1 < len(imgs) and imgs[k + 1][0] == "img":  # crossfade into the next photo
+                img = Image.blend(img, visual(k + 1, 0.0), (p - 0.92) / 0.08)
             img = img.convert("RGBA")
             img.alpha_composite(card(si, stage))
-            credit = "Photo: " + imgs[k][1]
+            credit = ("Video: " if imgs[k][0] == "video" else "Photo: ") + imgs[k][2]
             dd = ImageDraw.Draw(img)
             cw = small.length(dd, credit)
             small.draw(dd, (W - cw - s(14), s(64)), credit, (230, 230, 230), stroke=2, stroke_fill=(0, 0, 0))
-            shouting = bool(fx) and any(a <= tl <= b for a, b in seg.get("shout_spans") or [])
+            shouting = bool(fx) and bool(seg.get("angry"))  # the whole story: furious or cool
             pip = (fx["cool_pips"] if fx and not shouting else pips)[(mouth, blink)]
             pip = pip.rotate(2.5 * math.sin(tl * 2.2), resample=Image.BICUBIC)  # gentle head tilt
             jx, jy = ((i * 7) % 9 - 4, (i * 5) % 7 - 3) if shake and shouting and mouth == 2 else (0, 0)
@@ -430,7 +466,7 @@ def render_episode(episode, cfg, out_dir):
             img.alpha_composite(pip, pos)
         else:
             if fx:  # animated lion: head bob/tilt each frame, calm (shades) or burning while shouting
-                shouting = any(a <= tl <= b for a, b in seg.get("shout_spans") or [])
+                shouting = bool(seg.get("angry"))
                 img = card(si, stage).copy()
                 sp = (sprites if shouting else fx["cool"])[(mouth, blink)]
                 sp = sp.rotate(2 * math.sin(tl * 1.9), resample=Image.BICUBIC)

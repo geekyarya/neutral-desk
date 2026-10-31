@@ -39,13 +39,13 @@ PERSONAS = {
         "length_scale": 0.72,   # faster, more urgent
         "emphasis": True,       # sentences ending in "!" are shouted: louder and faster
         "shake": True,          # the anchor jolts on loud moments
-        "shout_effects": True,  # calm = sunglasses on; shouting/strong words = face turns red with anger
+        "shout_effects": True,  # calm stories = sunglasses on; stories that make people angry = red, furious face
         "pip_size": 250,        # bigger corner circle
         "strong_words": ["बकवास", "घटिया", "बेशर्म", "नौटंकी", "सड़ा", "भाड़", "साला", "शर्मनाक", "हद हो गई",
                          "तमाशा", "लापरवाही"],
         # louder and "in your face": cut the boominess, boost presence, compress hard
-        "voice_fx": "highpass=f=110,equalizer=f=2500:t=q:w=1.2:g=6,acompressor=threshold=-22dB:ratio=8:attack=3:"
-                    "release=60:makeup=6dB,alimiter=limit=0.95",
+        # presence boost only; no heavy compression, so shouted lines stay much louder than normal ones
+        "voice_fx": "highpass=f=110,equalizer=f=2500:t=q:w=1.2:g=4,volume=-4dB,alimiter=limit=0.97",
         "music": "tense",
         "breaking": True,
         "style": (
@@ -59,7 +59,11 @@ PERSONAS = {
             "religion, caste, community, gender or region, personal abuse of any named individual, saying someone "
             "committed a crime unless the reports say so, or any call for violence. For communal or religious "
             "clashes drop the anger and report calmly. For deaths and disasters aim the anger only at reported "
-            "negligence, never at victims. Never imitate or name any real TV anchor. End every story with the "
+            "negligence, never at victims. Never imitate or name any real TV anchor. Taunt and mock (तंज़): sarcastic praise like \"वाह भाई वाह! क्या बात है!\", \"तालियां बजाइए, बड़ा कमाल "
+            "किया है!\", \"बधाई हो, फिर से वही पुराना बहाना!\", quoting official excuses back in a mocking tone, and "
+            "playful comparisons. Mock what powerful people and institutions DID or SAID (as reported), never their "
+            "looks, family or identity. Calm, good-news stories get swagger and cool wit instead of anger. "
+            "End every story with the "
             "catchphrase \"चुप मत बैठिए, आवाज़ उठाइए!\" or a close variation. The facts, numbers and attributions "
             "stay exactly as reported."
         ),

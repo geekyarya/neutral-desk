@@ -71,8 +71,18 @@ def whoosh(sr, dur=0.5):
     return out * env * 0.5
 
 
-def mix(voice, sr, cues, volume=0.12, style="calm"):
-    """voice: int16 array. cues: seconds where a transition whoosh plays. Music ducks under speech."""
+def hit(sr, dur=1.2):
+    """A dramatic TV 'dhan!': deep boom + noise burst + a falling tone."""
+    t = np.arange(int(sr * dur)) / sr
+    boom = np.sin(2 * np.pi * (40 + 90 * np.exp(-t * 18)) * t) * np.exp(-t * 3.5)
+    burst = np.random.default_rng(9).standard_normal(len(t)) * np.exp(-t * 25) * 0.5
+    fall = np.sin(2 * np.pi * (520 * np.exp(-t * 2.5)) * t) * np.exp(-t * 4) * 0.25
+    return (boom + burst + fall).astype(np.float32) * 0.9
+
+
+def mix(voice, sr, cues, volume=0.12, style="calm", hits=()):
+    """voice: int16 array. cues: seconds where a transition whoosh plays; hits: seconds for a 'dhan!'.
+    Music ducks under speech."""
     v = voice.astype(np.float32) / 32768
     music = music_bed(len(v) / sr, sr, bpm=118 if style == "tense" else 92, style=style)
     music = music / (np.abs(music).max() or 1)
@@ -85,5 +95,9 @@ def mix(voice, sr, cues, volume=0.12, style="calm"):
     for c in cues:
         i = int(c * sr)
         out[i:i + len(w)] += w[: len(out) - i] * 0.6
+    hh = hit(sr)
+    for c in hits:
+        i = int(c * sr)
+        out[i:i + len(hh)] += hh[: len(out) - i]
     out = np.tanh(out * 1.1) / np.tanh(1.1)  # soft limiter
     return (np.clip(out, -1, 1) * 32767).astype(np.int16)
