@@ -123,6 +123,8 @@ If no suitable item exists, the slot posts a mystery instead. Instagram needs a 
 3. Save it as the repo secret `IG_TOKEN`.
 4. Optional, for automatic renewal: create a fine-grained GitHub token at https://github.com/settings/personal-access-tokens with access to this repo only and **Secrets: Read and write**, and save it as `GH_ADMIN_TOKEN`. Without it, generate a new `IG_TOKEN` every ~50 days.
 
+**Alternative: Facebook Login (no tester invite, token never expires).** Link the Instagram account to a Facebook Page. Then in the [Graph API Explorer](https://developers.facebook.com/tools/explorer) generate a user token for the app with `instagram_basic`, `instagram_content_publish`, `pages_show_list`, `pages_read_engagement` and `business_management`. Extend it in the [Access Token Debugger](https://developers.facebook.com/tools/debug/accesstoken), query `me/accounts`, and save the Page's `access_token` (it starts with `EAA`) as `IG_TOKEN`. The code detects which kind of token it has.
+
 Without `IG_TOKEN`, each Reel is still made and saved under the run's *Artifacts* for manual posting.
 
 ## 5. Realistic AI anchor (optional)
