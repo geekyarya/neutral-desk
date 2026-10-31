@@ -9,8 +9,10 @@
 name: daily-episode
 
 on:
-  schedule:
-    - cron: "37 1 * * *"   # 07:07 IST every day
+  schedule:   # GitHub can start scheduled runs hours late, so there are backups; later ones skip themselves
+    - cron: "37 1 * * *"   # 07:07 IST
+    - cron: "37 2 * * *"   # 08:07 IST (backup)
+    - cron: "37 3 * * *"   # 09:07 IST (backup)
   workflow_dispatch:
     inputs:
       upload:
@@ -23,8 +25,34 @@ on:
         options: [gemini, ollama]
         default: gemini
 
+permissions:
+  actions: read     # to see whether today's episode was already made
+  contents: read
+
+concurrency: daily-episode   # backups wait for a running episode instead of starting a second one
+
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      done: ${{ steps.check.outputs.done }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # a manual run always goes ahead; a scheduled one skips if today's episode already exists
+          N=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=script-$(date -u +%F)" --jq '.total_count')
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${N:-0}" -gt 0 ]; then
+            echo "Today's episode already exists; skipping."
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "done=false" >> "$GITHUB_OUTPUT"
+          fi
+
   episode:
+    needs: check
+    if: needs.check.outputs.done != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 150   # leaves room for the slow CPU backup model if Gemini is out of quota
     env:
