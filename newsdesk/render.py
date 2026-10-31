@@ -7,6 +7,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageOps
 
 from . import anchor as anchor_mod
+from .persona import persona
 from .strings import T, date_text
 from .text import Font, wrap
 from .tts import read_wav
@@ -319,7 +320,7 @@ def render_episode(episode, cfg, out_dir):
 
     mouths = anchor_mod.mouth_track(audio, sr, fps)
     blinks = anchor_mod.blink_track(n_frames, fps)
-    sprites = anchor_mod.sprites(s(420), s(520)) if mode == "puppet" else None
+    sprites = anchor_mod.sprites(s(420), s(520), persona(cfg)["character"]) if mode == "puppet" else None
     pips = _pip_sprites(sprites, s(190)) if sprites else None
     anchor_pos = (s(830), s(92))
     pip_pos = (W - s(232), H - s(52) - s(222))

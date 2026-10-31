@@ -6,6 +6,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from . import anchor as anchor_mod
+from .persona import persona
 from .render import ACCENT, AMBER, BG_BOTTOM, BG_TOP, GREEN, MUTED, WHITE, encode
 from .strings import T, date_text
 from .text import Font, wrap
@@ -93,7 +94,7 @@ def render_short(seg, cfg, speaker, out_dir):
     # anchor fills the space between the facts and the desk
     ah = max(560, 1640 - max(text_bottom, 860))
     aw = int(ah * 420 / 520)
-    sprites = anchor_mod.sprites(aw, ah)
+    sprites = anchor_mod.sprites(aw, ah, persona(cfg)["character"])
     pos = ((W - aw) // 2, 1640 - ah)
     d = ImageDraw.Draw(base)
     d.rectangle([0, 1760, W, H], fill=(8, 12, 24))

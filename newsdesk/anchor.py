@@ -106,8 +106,69 @@ def draw_anchor(mouth=0, blink=False, w=420, h=520):
     return out
 
 
-def sprites(w=420, h=520):
-    return {(m, b): draw_anchor(m, b, w, h) for m in (0, 1, 2) for b in (False, True)}
+def draw_parrot(mouth=0, blink=False, w=420, h=520):
+    """Mitthu Bhai: a green parrot anchor with round glasses and a red bow tie. mouth: 0 closed .. 2 open."""
+    img = Image.new("RGBA", (w * S, h * S), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    cx = w // 2
+    line = (25, 60, 35)
+    green, dark, belly = (70, 180, 90), (40, 135, 70), (170, 225, 120)
+
+    def oval(x, y, rx, ry, fill, outline=line, width=4):
+        d.ellipse([(x - rx) * S, (y - ry) * S, (x + rx) * S, (y + ry) * S], fill=fill,
+                  outline=outline, width=width * S if outline else 0)
+
+    # body, wings, belly
+    oval(cx, 420, 135, 150, green)
+    oval(cx - 118, 410, 48, 105, dark)
+    oval(cx + 118, 410, 48, 105, dark)
+    oval(cx, 440, 82, 110, belly, outline=None)
+    # bow tie
+    _poly(d, [(cx - 52, 300), (cx - 6, 318), (cx - 52, 338)], (220, 40, 55))
+    _poly(d, [(cx + 52, 300), (cx + 6, 318), (cx + 52, 338)], (220, 40, 55))
+    oval(cx, 318, 13, 13, (190, 25, 45), outline=None)
+    # head + crest feathers
+    for fx, fy, r in ((-28, 72, 26), (6, 58, 30), (40, 72, 24)):
+        oval(cx + fx, fy, r * 0.7, r * 1.3, dark)
+    oval(cx, 185, 128, 122, green)
+    oval(cx - 92, 215, 30, 22, (255, 120, 120), outline=None)  # rosy cheeks
+    oval(cx + 92, 215, 30, 22, (255, 120, 120), outline=None)
+    # eyes behind round glasses
+    for ex in (cx - 52, cx + 52):
+        oval(ex, 160, 40, 40, (255, 255, 255))
+        if blink:
+            _line(d, [(ex - 26, 162), (ex, 168), (ex + 26, 162)], line, 6)
+        else:
+            oval(ex + 6, 162, 17, 19, (20, 20, 25), outline=None)
+            oval(ex + 12, 154, 6, 6, (255, 255, 255), outline=None)
+        d.ellipse([(ex - 46) * S, (160 - 46) * S, (ex + 46) * S, (160 + 46) * S], outline=(30, 30, 35), width=7 * S)
+    _line(d, [(cx - 8, 158), (cx + 8, 158)], (30, 30, 35), 6)  # glasses bridge
+    # beak: the lower half drops open with the voice
+    gap = (0, 12, 24)[mouth]
+    if mouth:
+        oval(cx, 252 + gap / 2, 24, 6 + gap / 2, (150, 30, 40))  # inside of the beak
+        oval(cx, 256 + gap * 0.7, 13, 3 + gap / 4, (240, 110, 120), outline=None)  # tongue
+    _poly(d, [(cx - 24, 250 + gap), (cx + 24, 250 + gap), (cx + 9, 274 + gap), (cx - 9, 274 + gap)], (245, 170, 40))
+    _line(d, [(cx - 24, 250 + gap), (cx - 9, 274 + gap), (cx + 9, 274 + gap), (cx + 24, 250 + gap)], line, 4)
+    _poly(d, [(cx - 40, 205), (cx + 40, 205), (cx + 36, 230), (cx + 6, 262), (cx - 6, 262), (cx - 36, 230)],
+          (255, 200, 60))
+    _line(d, [(cx - 40, 205), (cx - 36, 230), (cx - 6, 262), (cx + 6, 262), (cx + 36, 230), (cx + 40, 205)], line, 4)
+
+    img = img.resize((w, h), Image.LANCZOS)
+    shadow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    shadow.putalpha(img.getchannel("A").point(lambda a: a * 0.35).filter(ImageFilter.GaussianBlur(10)))
+    out = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    out.alpha_composite(shadow, (6, 6))
+    out.alpha_composite(img)
+    return out
+
+
+CHARACTERS = {"anchor": draw_anchor, "parrot": draw_parrot}
+
+
+def sprites(w=420, h=520, character="anchor"):
+    draw = CHARACTERS.get(character, draw_anchor)
+    return {(m, b): draw(m, b, w, h) for m in (0, 1, 2) for b in (False, True)}
 
 
 def mouth_track(samples, sr, fps):

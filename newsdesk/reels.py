@@ -16,6 +16,7 @@ from .cluster import cluster_stories
 from .editor import _clean, _fix_spelling, _reports_text, _stray, wrong_language
 from .fetch import fetch_all, fetch_full_text
 from .llm import complete_json
+from .persona import persona
 from .strings import T
 from .trends import reactions_text, reddit_reactions
 
@@ -35,6 +36,8 @@ anything else ("according to NDTV..."). No opinions, no emotional words, no spec
 """ + COMMON_RULES + """- "about_india": true if the event is in India or directly involves India/Indians.
 If PUBLIC REACTION posts are given, end the script with ONE sentence on the range of opinions, clearly framed as
 opinion ("सोशल मीडिया पर कुछ लोगों का कहना है ..., तो कुछ ..."), no usernames, nothing hateful.
+
+{style}
 
 REPORTS:
 {reports}
@@ -112,6 +115,7 @@ def make_news(cfg, used_urls):
         reactions = ("\nPUBLIC REACTION (Reddit, opinions NOT facts):\n" + reactions_text(threads)) if threads else ""
         res = complete_json(cfg, NEWS_PROMPT.format(n=len(story["articles"]), k=min(k, story["n_outlets"]),
                                                     reports=_reports_text(story), reactions=reactions,
+                                                    style=persona(cfg)["style"],
                                                     **_lang(cfg)))
         if story["section"] == "india" and not res.get("about_india", True):
             continue

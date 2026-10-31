@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from .fetch import fetch_full_text
 from .llm import complete_json
+from .persona import persona
 from .strings import T, date_text
 from .trends import reactions_text, reddit_reactions
 
@@ -42,6 +43,8 @@ Return JSON with exactly these keys:
   most important confirmed fact as a hook. Same rules: no opinions, attribute anything unconfirmed. No sign-off.
 
 - "public_reaction": {reaction_rule}
+
+{style}
 
 LANGUAGE: write "headline", "fact", "claim", "script", "why_it_matters" and "public_reaction" in {language}
 "visuals" stay in English (they are Wikipedia titles).
@@ -159,6 +162,7 @@ def _edit_with_llm(story, cfg):
     k = min(cfg["editor"]["confirm_threshold"], story["n_outlets"])
     reactions = story.get("reactions") or []
     prompt = PROMPT.format(n=len(story["articles"]), k=k, words="90 to 130", short_words="60 to 80",
+                           style=persona(cfg)["style"],
                            language=T(cfg)["llm_language"], reports=_reports_text(story),
                            reaction_rule=REACTION_RULE if reactions else NO_REACTIONS,
                            reactions=("\nPUBLIC REACTION (Reddit posts and comments: opinions, NOT facts):\n"
@@ -253,9 +257,12 @@ def build_episode(candidates, cfg):
 
     t, name = T(cfg), cfg["channel"].get("spoken_name") or cfg["channel"]["name"]
     n_outlets = len({src["outlet"] for seg in segments for src in seg["sources"]})
+    lang, pz = cfg["channel"]["language"], persona(cfg)
+    intro_t = pz.get("intro", {}).get(lang, t["intro"])
+    outro_t = pz.get("outro", {}).get(lang, t["outro"])
     intro = {"id": "intro", "kind": "intro", "headline": t["top_stories"],
-             "script": t["intro"].format(name=name, date=date_text(cfg), n_outlets=n_outlets)}
+             "script": intro_t.format(name=name, date=date_text(cfg), n_outlets=n_outlets)}
     outro = {"id": "outro", "kind": "outro", "headline": t["how_title"],
-             "script": t["outro"].format(name=name, k=ed["confirm_threshold"])}
+             "script": outro_t.format(name=name, k=ed["confirm_threshold"])}
     return {"date": dt.date.today().isoformat(), "channel": cfg["channel"]["name"],
             "language": cfg["channel"]["language"], "segments": [intro, *segments, outro]}

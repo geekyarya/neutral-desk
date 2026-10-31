@@ -3,6 +3,12 @@
 #  Everything here is free. Edit and re-run.
 # ---------------------------------------------------------------
 
+# On-screen character and tone.
+#   mitthu  = "Mitthu Bhai", a witty parrot anchor (funny Hinglish delivery, playful high voice)
+#   classic = the serious human anchor
+style:
+  persona: "mitthu"
+
 channel:
   name: "Zero Masala"                # shown on screen
   spoken_name: "ज़ीरो मसाला"          # how the anchor says it (write in the episode's language)

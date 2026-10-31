@@ -6,6 +6,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageOps
 
 from . import anchor as anchor_mod
+from .persona import persona
 from .render import ACCENT, AMBER, BG_BOTTOM, BG_TOP, GREEN, WHITE, encode
 from .strings import T
 from .text import Font, wrap
@@ -99,7 +100,7 @@ def render_reel(content, cfg, out_dir):
         base = _gradient()
         ah = 820
         aw = int(ah * 420 / 520)
-        sprites = anchor_mod.sprites(aw, ah)
+        sprites = anchor_mod.sprites(aw, ah, persona(cfg)["character"])
         pos = ((W - aw) // 2, H - ah - 60)
         mouths = anchor_mod.mouth_track(audio, sr, FPS)
         blinks = anchor_mod.blink_track(n, FPS)
