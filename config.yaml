@@ -54,6 +54,9 @@ video:
   width: 1280
   height: 720
   fps: 25
+  photos: true          # freely licensed Wikimedia photos behind each story (credited on screen)
+  music: true           # soft original music bed under the voice + transition whooshes
+  music_volume: 0.12
 
 youtube:
   privacy: "public"          # publish immediately (use "private" to review before publishing)

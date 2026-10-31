@@ -4,7 +4,7 @@ import wave
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageOps
 
 from . import anchor as anchor_mod
 from .strings import T, date_text
@@ -85,10 +85,11 @@ class Layout:
         d.line([(x, y + size * 0.55), (x + size * 0.38, y + size * 0.9), (x + size, y + size * 0.1)],
                fill=color, width=max(2, self.s(3)), joint="curve")
 
-    def story_panel(self, img, seg, idx, total):
+    def story_panel(self, img, seg, idx, total, n_facts=None, rest=True, w=None):
+        """n_facts: how many confirmed facts to show (None = all); rest: also show disputed/why/opinion boxes."""
         d = ImageDraw.Draw(img)
         s, t = self.s, self.t
-        x, y, w = s(48), s(76), s(720)
+        x, y, w = s(48), s(76), w or s(720)
         tag = t["story_n"].format(i=idx, n=total)
         if seg.get("section") == "world":
             tag += "  |  " + t["world"]
@@ -115,11 +116,15 @@ class Layout:
         y += s(34)
 
         limit, row = s(645), self.lh("body")
+        why = seg.get("why_it_matters") if rest else ""
+        if why:
+            limit -= s(80)  # keep room for the "why it matters" box at the bottom
         facts = seg.get("confirmed_facts") or []
+        shown = facts if n_facts is None else facts[:n_facts]
         if facts:
             self.text(d, (x, y), t["confirmed"], "label", GREEN)
             y += s(30)
-            for fct in facts:
+            for fct in shown:
                 lines = wrap(d, fct["fact"], self.f["body"], w - s(24), 2)
                 if y + len(lines) * row > limit - s(70):
                     break
@@ -129,11 +134,14 @@ class Layout:
                     y += row
                 y += s(4)
             y += s(8)
+        if not rest:
+            return
         reaction = seg.get("public_reaction")
         if reaction:
             limit -= s(108)  # keep room for the opinion box at the bottom
         disputed = [c for c in seg.get("disputed") or [] if c.get("reported_by")]
-        if disputed and y < limit - s(70):
+        first = wrap(d, disputed[0]["claim"], self.f["body"], w - s(24), 2) if disputed else []
+        if disputed and y + s(30) + len(first) * row <= limit:  # heading only if at least one claim fits
             self.text(d, (x, y), t["unconfirmed"], "label", AMBER)
             y += s(30)
             for c in disputed:
@@ -146,6 +154,12 @@ class Layout:
                     self.text(d, (x + s(22), y), line, "body", (225, 228, 235))
                     y += row
                 y += s(4)
+        if why:
+            top = s(645) - s(74)
+            d.rounded_rectangle([x, top, x + w, top + s(66)], radius=s(8), fill=(60, 44, 20), outline=AMBER, width=2)
+            self.text(d, (x + s(14), top + s(4)), t["why_label"], "label", AMBER)
+            for line in wrap(d, why, self.f["small"], w - s(28), 1):
+                self.text(d, (x + s(14), top + s(32)), line, "small", WHITE)
         if reaction:  # opinions get their own, clearly labelled box, never mixed with facts
             top = limit + s(6)
             d.rounded_rectangle([x, top, x + w, top + s(100)], radius=s(8), fill=(30, 36, 60),
@@ -220,6 +234,54 @@ def _concat_audio(episode, out_dir):
     return path, audio, sr
 
 
+TRANSITION = 0.45  # seconds of the "खबर 2" wipe at the start of each story
+
+
+def _ease(x):
+    x = min(max(x, 0.0), 1.0)
+    return x * x * (3 - 2 * x)
+
+
+def _reveal_stage(seg, t, dur):
+    """How much of a story card is visible at local time t: facts appear one by one as they are spoken."""
+    n = len(seg.get("confirmed_facts") or [])
+    shown = sum(t >= dur * (0.12 + 0.6 * j / max(n, 1)) for j in range(n))
+    return shown, t >= dur * 0.72
+
+
+def _cover(img, w, h):
+    return ImageOps.fit(img.convert("RGB"), (w, h), Image.LANCZOS)
+
+
+def _kenburns(src, p, W, H, flip):
+    """Slow zoom (1.0 -> 1.1) with a gentle sideways drift."""
+    z = 1.0 + 0.1 * p
+    cw, ch = int(src.width / z), int(src.height / z)
+    drift = (p - 0.5) * (0.3 if flip else -0.3)
+    x0 = int((src.width - cw) * (0.5 + drift))
+    y0 = int((src.height - ch) * 0.45)
+    return src.crop((x0, y0, x0 + cw, y0 + ch)).resize((W, H), Image.BILINEAR)
+
+
+def _pip_sprites(sprites, d):
+    """Round picture-in-picture versions of the anchor (head and shoulders) for photo segments."""
+    out = {}
+    mask = Image.new("L", (d, d), 0)
+    ImageDraw.Draw(mask).ellipse([0, 0, d - 1, d - 1], fill=255)
+    for key, sp in sprites.items():
+        w, h = sp.size
+        crop = sp.crop((int(w * 0.08), int(h * 0.04), int(w * 0.92), int(h * 0.04 + w * 0.84)))
+        face = Image.new("RGBA", crop.size, (24, 40, 74, 255))
+        face.alpha_composite(crop)
+        face = face.resize((d, d), Image.LANCZOS)
+        ring = Image.new("RGBA", (d + 12, d + 12), (0, 0, 0, 0))
+        ImageDraw.Draw(ring).ellipse([0, 0, d + 11, d + 11], fill=ACCENT)
+        ImageDraw.Draw(ring).ellipse([3, 3, d + 8, d + 8], fill=WHITE)
+        ring.paste(face, (6, 6), mask)
+        out[key] = ring
+    return out
+
+
 def render_episode(episode, cfg, out_dir):
     out_dir = Path(out_dir)
     L = Layout(cfg)
@@ -227,60 +289,151 @@ def render_episode(episode, cfg, out_dir):
     mode = cfg["anchor"]["mode"]
     audio_path, audio, sr = _concat_audio(episode, out_dir)
     n_frames = int(len(audio) / sr * fps)
+    segs = episode["segments"]
 
-    stories = [x for x in episode["segments"] if x["kind"] == "story"]
-    base = L.background()
-
-    # one static "card" per segment
-    cards = []
-    for seg in episode["segments"]:
-        img = base.copy()
-        if seg["kind"] == "intro":
-            L.list_panel(img, seg["headline"], [x["headline"] for x in stories[:6]])
-        elif seg["kind"] == "outro":
-            k = cfg["editor"]["confirm_threshold"]
-            L.list_panel(img, seg["headline"], [p.format(k=k) for p in L.t["how_points"]], numbered=False)
-        else:
-            L.story_panel(img, seg, stories.index(seg) + 1, len(stories))
-        if mode != "puppet":  # puppet: anchor drawn per frame, desk goes on top of it
-            L.desk(img)
-        cards.append(img)
-
-    # timeline: which segment is on screen at each frame
-    seg_of_frame = np.zeros(n_frames, dtype=int)
-    t = 0.0
-    for i, seg in enumerate(episode["segments"]):
-        a, b = int(t * fps), int((t + seg["duration"]) * fps)
-        seg_of_frame[a:b] = i
+    # timeline
+    starts, t = [], 0.0
+    for seg in segs:
+        starts.append(t)
         t += seg["duration"]
-    seg_of_frame[int(t * fps):] = len(episode["segments"]) - 1
+    seg_of_frame = np.zeros(n_frames, dtype=int)
+    for i, st in enumerate(starts):
+        seg_of_frame[int(st * fps):] = i
+
+    # music bed + whoosh on every story transition (generated, no copyright)
+    vcfg = cfg.get("video", {})
+    if vcfg.get("music", True):
+        from .sound import mix
+        mixed = mix(audio, sr, [st for st, sg in zip(starts, segs) if sg["kind"] == "story"],
+                    vcfg.get("music_volume", 0.12))
+        audio_path = out_dir / "audio" / "episode_mix.wav"
+        with wave.open(str(audio_path), "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(sr)
+            w.writeframes(mixed.tobytes())
+
+    stories = [x for x in segs if x["kind"] == "story"]
+    base = L.background()
+    topbar = base.crop((0, 0, W, s(56)))
 
     mouths = anchor_mod.mouth_track(audio, sr, fps)
     blinks = anchor_mod.blink_track(n_frames, fps)
     sprites = anchor_mod.sprites(s(420), s(520)) if mode == "puppet" else None
+    pips = _pip_sprites(sprites, s(190)) if sprites else None
     anchor_pos = (s(830), s(92))
+    pip_pos = (W - s(232), H - s(52) - s(222))
+
+    # photos for each story (fetched earlier by media.add_story_images)
+    photos = {}
+    for seg in stories:
+        imgs = []
+        for im in seg.get("images") or []:
+            try:
+                imgs.append((_cover(Image.open(out_dir / im["path"]), int(W * 1.12), int(H * 1.12)), im["credit"]))
+            except OSError:
+                pass
+        if imgs and sprites is not None:
+            photos[seg["id"]] = imgs
+
+    # dark fade on the left of photos so the text stays readable
+    xs = np.linspace(0, 1, W)
+    alpha = np.clip(1.05 - xs * 1.25, 0, 0.92) * 255
+    fade = Image.fromarray(np.dstack([np.full((H, W, 3), (8, 12, 24), np.uint8),
+                                      np.repeat(alpha[None, :], H, axis=0).astype(np.uint8)]), "RGBA")
 
     strip, loop_w = L.ticker_strip([x["headline"] for x in stories])
     tick_y, tick_h = H - s(52), s(52)
     tmp = ImageDraw.Draw(Image.new("RGB", (1, 1)))
     label_w = int(L.tlen(tmp, L.t["headlines"], "tick")) + s(40)
     speed = s(110) / fps  # pixels per frame
+    small = Font(s(13))
 
-    cache = {}
+    cache = {"seg": None}
+
+    def card(si, stage):
+        """Static layer for a segment at a reveal stage (cached per segment)."""
+        key = ("card", stage)
+        if key in cache:
+            return cache[key]
+        seg = segs[si]
+        if seg["kind"] == "story" and seg["id"] in photos:
+            layer = fade.copy()
+            layer.paste(topbar, (0, 0))
+            L.story_panel(layer, seg, stories.index(seg) + 1, len(stories), n_facts=stage[0], rest=stage[1],
+                          w=s(640))
+        else:
+            layer = base.copy()
+            if seg["kind"] == "intro":
+                L.list_panel(layer, seg["headline"], [x["headline"] for x in stories[:6]][: stage[0]])
+            elif seg["kind"] == "outro":
+                k = cfg["editor"]["confirm_threshold"]
+                L.list_panel(layer, seg["headline"], [p.format(k=k) for p in L.t["how_points"]][: stage[0]],
+                             numbered=False)
+            else:
+                L.story_panel(layer, seg, stories.index(seg) + 1, len(stories), n_facts=stage[0], rest=stage[1])
+            if mode != "puppet":
+                L.desk(layer)
+        cache[key] = layer
+        return layer
 
     def frame_rgb(i):
-        si = seg_of_frame[i]
-        key = (si, int(mouths[min(i, len(mouths) - 1)]), bool(blinks[i]))
-        if key not in cache:
-            img = cards[si].copy()
-            if sprites is not None:
-                img.alpha_composite(sprites[(key[1], key[2])], anchor_pos)
-                L.desk(img)
-            d = ImageDraw.Draw(img)
-            d.rectangle([0, tick_y, label_w, H], fill=ACCENT)
-            L.text(d, (s(20), tick_y + s(10)), L.t["headlines"], "tick", WHITE)
-            cache[key] = img.convert("RGB")
-        img = cache[key].copy()
+        si = int(seg_of_frame[i])
+        seg = segs[si]
+        if cache["seg"] != si:  # keep memory small: only the current segment's layers are cached
+            cache.clear()
+            cache["seg"] = si
+        tl = i / fps - starts[si]
+        dur = seg["duration"]
+        if seg["kind"] == "story":
+            stage = _reveal_stage(seg, tl, dur)
+        else:  # intro/outro lists build up line by line
+            n_items = 6 if seg["kind"] == "intro" else len(L.t["how_points"])
+            stage = (sum(tl >= dur * (0.15 + 0.6 * j / n_items) for j in range(n_items)), True)
+        mouth, blink = int(mouths[min(i, len(mouths) - 1)]), bool(blinks[i])
+
+        if seg["kind"] == "story" and seg["id"] in photos:
+            imgs = photos[seg["id"]]
+            slot = dur / len(imgs)
+            k = min(int(tl / slot), len(imgs) - 1)
+            p = (tl - k * slot) / slot
+            img = _kenburns(imgs[k][0], p, W, H, k % 2 == 1)
+            if p > 0.92 and k + 1 < len(imgs):  # crossfade into the next photo
+                nxt = _kenburns(imgs[k + 1][0], 0.0, W, H, (k + 1) % 2 == 1)
+                img = Image.blend(img, nxt, (p - 0.92) / 0.08)
+            img = img.convert("RGBA")
+            img.alpha_composite(card(si, stage))
+            credit = "Photo: " + imgs[k][1]
+            dd = ImageDraw.Draw(img)
+            cw = small.length(dd, credit)
+            small.draw(dd, (W - cw - s(14), s(64)), credit, (230, 230, 230), stroke=2, stroke_fill=(0, 0, 0))
+            pip = pips[(mouth, blink)]
+            img.alpha_composite(pip, pip_pos)
+        else:
+            key = ("frame", stage, mouth, blink)
+            if key not in cache:
+                img = card(si, stage).copy()
+                if sprites is not None:
+                    img.alpha_composite(sprites[(mouth, blink)], anchor_pos)
+                    L.desk(img)
+                cache[key] = img
+            img = cache[key].copy()
+
+        if seg["kind"] == "story" and tl < TRANSITION:  # branded wipe: panel sweeps in, then out
+            x = tl / TRANSITION
+            left = 0 if x < 0.5 else int(W * _ease((x - 0.5) * 2))
+            right = int(W * _ease(x * 2)) if x < 0.5 else W
+            dd = ImageDraw.Draw(img)
+            dd.rectangle([left, 0, right, H], fill=ACCENT)
+            label = f"{L.t['story_word']} {stories.index(seg) + 1}"
+            lw = L.tlen(dd, label, "thumb")
+            if right - left > lw:
+                L.text(dd, ((left + right - lw) / 2, H / 2 - s(40)), label, "thumb", WHITE)
+
+        img = img.convert("RGB")
+        dd = ImageDraw.Draw(img)
+        dd.rectangle([0, tick_y, label_w, H], fill=ACCENT)
+        L.text(dd, (s(20), tick_y + s(10)), L.t["headlines"], "tick", WHITE)
         off = int(i * speed) % loop_w
         img.paste(strip.crop((off, 0, off + W - label_w, tick_h)), (label_w, tick_y))
         return img.tobytes()
@@ -318,6 +471,19 @@ def _overlay_lipsync(episode, out_dir, bg_video, final, L):
 def save_thumbnail(L, base, stories, sprites, out_dir):
     s = L.s
     img = base.copy()
+    lead = (stories[0].get("images") or [None])[0] if stories else None
+    if lead:
+        try:
+            photo = _cover(Image.open(Path(out_dir) / lead["path"]), L.W, L.H).convert("RGBA")
+            xs = np.linspace(0, 1, L.W)
+            a = (np.clip(1.1 - xs * 1.1, 0.15, 0.9) * 255).astype(np.uint8)
+            shade = Image.fromarray(np.dstack([np.full((L.H, L.W, 3), (8, 12, 24), np.uint8),
+                                               np.repeat(a[None, :], L.H, axis=0)]), "RGBA")
+            photo.alpha_composite(shade)
+            photo.paste(base.crop((0, 0, L.W, s(56))), (0, 0))
+            img, sprites = photo, None
+        except OSError:
+            pass
     d = ImageDraw.Draw(img)
     y = s(130)
     head = stories[0]["headline"] if stories else L.t["top_stories"]

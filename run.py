@@ -66,6 +66,11 @@ def stage_video(cfg, d, ep):
     from newsdesk.upload import build_metadata
     if any("duration" not in s for s in ep["segments"]):
         ep = stage_audio(cfg, d, ep)
+    if cfg.get("video", {}).get("photos", True):
+        from newsdesk.media import add_story_images
+        print("Finding free photos for each story...")
+        ep = add_story_images(ep, d)
+        save(ep, d)
     out = render_episode(ep, cfg, d)
     meta = build_metadata(ep, cfg)
     (d / "youtube_title.txt").write_text(meta["title"], encoding="utf-8")

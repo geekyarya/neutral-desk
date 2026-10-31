@@ -24,16 +24,27 @@ Return JSON with exactly these keys:
   {k} different outlets below state it. Plain, neutral wording, max 20 words each. Max 4 facts, most important first.
 - "disputed": list of objects {{"claim": str, "reported_by": [outlet names]}} for important claims that only
   one or two outlets make, or where outlets contradict each other. Max 20 words each. Max 3.
-- "script": what the TV anchor says, {words} words. Use only confirmed facts as statements.
+- "script": what the TV anchor says, {words} words, written to be LISTENED to and to keep viewers watching:
+  1) open with a hook: the single most striking confirmed fact, or a short question the story answers;
+  2) what happened, in short spoken sentences (max ~15 words each), with concrete numbers, places and names;
+  3) why it matters to ordinary people ("इसका असर..."), only as far as the reports support it;
+  4) what happens next, if the reports say.
+  Conversational and lively, like a good TV anchor talking to one viewer. Use only confirmed facts as statements.
   Mention disputed claims only with attribution ("According to Dawn, ..." / "This could not be independently
-  confirmed"). No opinions, no emotional words (e.g. "shocking", "slams", "massive"), no speculation.
+  confirmed"). No opinions, no sensational words (e.g. "shocking", "slams", "massive"), no speculation.
   Do not greet or sign off.
+- "why_it_matters": one line, max 15 words, the practical significance of the story, only as far as the reports
+  support it. "" if unclear.
+- "visuals": 2 to 4 English Wikipedia article titles that illustrate the story with photos: the specific
+  places, institutions, landmarks, vehicles/objects or public figures involved (e.g. "Indian Space Research
+  Organisation", "Sriharikota", "Joshimath"). Never private individuals, victims or children.
 - "short_script": a {short_words}-word version of "script" for a 30-40 second vertical Short. Open with the single
   most important confirmed fact as a hook. Same rules: no opinions, attribute anything unconfirmed. No sign-off.
 
 - "public_reaction": {reaction_rule}
 
-LANGUAGE: write "headline", "fact", "claim", "script" and "public_reaction" in {language}
+LANGUAGE: write "headline", "fact", "claim", "script", "why_it_matters" and "public_reaction" in {language}
+"visuals" stay in English (they are Wikipedia titles).
 Outlet names in "outlets" and "reported_by" must be copied exactly (in English) from the brackets below.
 
 REPORTS:
@@ -80,7 +91,7 @@ def wrong_language(res, lang, keys=("headline", "script")):
 
 def _all_text(res):
     parts = [res.get("headline", ""), res.get("script", ""), str(res.get("short_script") or ""),
-             str(res.get("public_reaction") or "")]
+             str(res.get("public_reaction") or ""), str(res.get("why_it_matters") or "")]
     parts += [f.get("fact", "") for f in res.get("confirmed_facts") or []]
     parts += [d.get("claim", "") for d in res.get("disputed") or []]
     return " ".join(str(p) for p in parts)
@@ -92,6 +103,7 @@ def _clean(res, lang):
     res["headline"], res["script"] = fix(res["headline"]), fix(res["script"])
     res["short_script"] = fix(str(res.get("short_script") or ""))
     res["public_reaction"] = fix(str(res.get("public_reaction") or ""))
+    res["why_it_matters"] = fix(str(res.get("why_it_matters") or ""))
     for f in res.get("confirmed_facts") or []:
         f["fact"] = fix(f.get("fact", ""))
     for d in res.get("disputed") or []:
@@ -119,7 +131,7 @@ def _fix_spelling(res, fixes):
         for wrong, right in fixes.items():
             text = text.replace(wrong, right)
         return text
-    for key in ("headline", "script", "short_script", "public_reaction"):
+    for key in ("headline", "script", "short_script", "public_reaction", "why_it_matters"):
         if res.get(key):
             res[key] = fix(str(res[key]))
     for f in res.get("confirmed_facts") or []:
@@ -137,6 +149,8 @@ def _package(res, story, k, fixes=None):
             "script": f"{res['script'].strip()} {reaction}".strip(),  # facts first, then labelled opinion
             "public_reaction": reaction,
             "short_script": str(res.get("short_script") or "").strip(),
+            "why_it_matters": str(res.get("why_it_matters") or "").strip(),
+            "visuals": [str(v) for v in (res.get("visuals") or [])][:4],
             "about_india": bool(res.get("about_india", True)),
             "confirmed_facts": confirmed, "disputed": disputed}
 
