@@ -47,8 +47,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # a manual run always goes ahead; scheduled/guarded ones skip if today's episode already exists
-          N=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=script-$(date -u +%F)" --jq '.total_count')
+          # a manual run always goes ahead; scheduled/guarded ones skip if today's episode was already POSTED (test runs don't count)
+          N=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=posted-$(date -u +%F)" --jq '.total_count')
           if { [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.guard }}" = "true" ]; } && [ "${N:-0}" -gt 0 ]; then
             echo "Today's episode already exists; skipping."
             echo "done=true" >> "$GITHUB_OUTPUT"
@@ -138,6 +138,15 @@ jobs:
             output/*/script.json
             output/*/youtube_*.txt
           retention-days: 7
+      - name: Mark today as posted (so backup and timed runs skip)
+        if: env.HAS_YT == 'true' && (github.event_name == 'schedule' || inputs.upload)
+        run: echo "${EPISODE_DATE}" > posted.txt
+      - uses: actions/upload-artifact@v4
+        if: env.HAS_YT == 'true' && (github.event_name == 'schedule' || inputs.upload)
+        with:
+          name: posted-${{ env.EPISODE_DATE }}
+          path: posted.txt
+          retention-days: 3
       - name: Keep the script for Sunday's weekly review
         uses: actions/upload-artifact@v4
         with:

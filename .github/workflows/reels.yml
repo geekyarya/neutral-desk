@@ -62,7 +62,7 @@ jobs:
           SKIP_IF_DONE: ${{ github.event_name == 'schedule' || inputs.guard }}
         run: python run.py reel ${{ inputs.slot != '' && format('--slot {0}', inputs.slot) || '' }}
       - name: Host the video (GitHub release file)
-        if: env.REEL_ID != ''
+        if: env.REEL_ID != '' && (github.event_name == 'schedule' || inputs.publish)  # test runs leave no marker
         run: |
           TAG="reel-${REEL_ID}-${GITHUB_RUN_ID}"
           FILE="output/reels/${REEL_ID}/${TAG}.mp4"
