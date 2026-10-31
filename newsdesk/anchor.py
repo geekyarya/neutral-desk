@@ -163,59 +163,87 @@ def draw_parrot(mouth=0, blink=False, w=420, h=520):
     return out
 
 
-def draw_lion(mouth=0, blink=False, w=420, h=520):
-    """Babbar Bhai: an angry lion anchor with a wild mane, furious eyebrows and an anger vein. mouth: 0..2."""
+def draw_lion(mouth=0, blink=False, w=420, h=520, cool=False):
+    """Babbar Bhai, a cartoon lion anchor in a suit.
+    cool=True: calm, sunglasses on.  cool=False: shouting, face red with anger, furious brows, vein and steam."""
     import math
     img = Image.new("RGBA", (w * S, h * S), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     cx, hy = w // 2, 200
     line = (60, 30, 15)
+    angry = not cool
+    face = (232, 92, 62) if angry else (240, 175, 70)
+    ear = (215, 80, 55) if angry else (230, 160, 60)
+    mane_out = (140, 45, 25) if angry else (150, 75, 28)
+    mane_in = (165, 60, 30) if angry else (180, 95, 38)
+    muzzle = (250, 175, 150) if angry else (252, 225, 178)
 
     def oval(x, y, rx, ry, fill, outline=line, width=4):
         d.ellipse([(x - rx) * S, (y - ry) * S, (x + rx) * S, (y + ry) * S], fill=fill,
                   outline=outline, width=width * S if outline else 0)
 
-    # suit body + tie
-    _poly(d, [(cx - 175, h), (cx - 160, 400), (cx - 90, 360), (cx + 90, 360), (cx + 160, 400), (cx + 175, h)],
-          (40, 40, 48))
-    _poly(d, [(cx - 45, 360), (cx + 45, 360), (cx, 450)], (240, 240, 245))
-    _poly(d, [(cx - 12, 368), (cx + 12, 368), (cx + 16, 440), (cx, 462), (cx - 16, 440)], (200, 20, 30))
-    # spiky mane
-    pts = []
-    for k in range(28):
-        a = 2 * math.pi * k / 28
-        r = 175 if k % 2 == 0 else 140
-        pts.append((cx + r * math.cos(a), hy + 10 + r * 0.95 * math.sin(a)))
-    _poly(d, pts, (150, 70, 25))
-    oval(cx, hy + 10, 138, 132, (175, 90, 35), outline=None)
-    # ears + face
-    oval(cx - 92, hy - 92, 30, 30, (230, 160, 60))
-    oval(cx + 92, hy - 92, 30, 30, (230, 160, 60))
-    oval(cx, hy + 15, 112, 112, (240, 175, 70))
-    oval(cx, hy + 70, 70, 50, (250, 220, 170), outline=None)  # muzzle
-    # furious eyebrows + eyes
-    for side in (-1, 1):
-        ex = cx + side * 45
-        if blink:
-            _line(d, [(ex - 20, hy - 5), (ex + 20, hy - 5)], line, 6)
-        else:
-            oval(ex, hy - 5, 20, 16, (255, 255, 255))
-            oval(ex - side * 3, hy - 2, 9, 9, (20, 15, 10), outline=None)
-        _line(d, [(ex + side * 34, hy - 52), (ex - side * 24, hy - 22)], (90, 40, 15), 13)  # inner end down = angry
-    # anger vein
-    vx, vy = cx + 70, hy - 70
-    for dx, dy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
-        _line(d, [(vx + dx * 6, vy + dy * 6), (vx + dx * 18, vy + dy * 6), (vx + dx * 18, vy + dy * 18)],
-              (220, 30, 40), 6)
-    # nose + shouting mouth
-    _poly(d, [(cx - 22, hy + 40), (cx + 22, hy + 40), (cx, hy + 62)], (110, 50, 40))
+    # suit, shirt, tie, lapels
+    _poly(d, [(cx - 182, h), (cx - 168, 400), (cx - 92, 356), (cx + 92, 356), (cx + 168, 400), (cx + 182, h)],
+          (38, 42, 58))
+    _poly(d, [(cx - 50, 356), (cx + 50, 356), (cx, 452)], (242, 242, 248))
+    _poly(d, [(cx - 50, 356), (cx - 98, 366), (cx - 60, 500), (cx - 10, 452)], (52, 58, 78))
+    _poly(d, [(cx + 50, 356), (cx + 98, 366), (cx + 60, 500), (cx + 10, 452)], (52, 58, 78))
+    _poly(d, [(cx - 13, 364), (cx + 13, 364), (cx + 17, 440), (cx, 464), (cx - 17, 440)], (200, 24, 34))
+    # fluffy mane: two rings of rounded tufts
+    for r, n, col, sz in ((168, 22, mane_out, 40), (140, 18, mane_in, 36)):
+        for k in range(n):
+            a = 2 * math.pi * (k + 0.5 * (r == 140)) / n
+            oval(cx + r * math.cos(a), hy + 12 + r * 0.95 * math.sin(a), sz, sz, col, outline=None)
+    oval(cx, hy + 12, 140, 134, mane_in, outline=None)
+    # ears + face with soft cheek shading
+    for ex in (cx - 92, cx + 92):
+        oval(ex, hy - 92, 32, 32, ear)
+        oval(ex, hy - 90, 16, 16, (250, 200, 160), outline=None)
+    oval(cx, hy + 15, 114, 114, face)
+    oval(cx - 70, hy + 45, 30, 20, (255, 120, 110) if not angry else (200, 40, 30), outline=None)
+    oval(cx + 70, hy + 45, 30, 20, (255, 120, 110) if not angry else (200, 40, 30), outline=None)
+    oval(cx, hy + 72, 72, 50, muzzle, outline=None)
+    for k in (-1, 1):  # whisker dots
+        for j in range(3):
+            oval(cx + k * (34 + j * 12), hy + 72 + (j % 2) * 10, 3, 3, (110, 60, 40), outline=None)
+    # eyes / sunglasses / brows
+    if cool:
+        for side in (-1, 1):
+            ex = cx + side * 46
+            d.rounded_rectangle([(ex - 40) * S, (hy - 26) * S, (ex + 40) * S, (hy + 14) * S], radius=16 * S,
+                                fill=(18, 18, 24), outline=(70, 70, 80), width=3 * S)
+            _poly(d, [(ex - 28, hy - 18), (ex - 8, hy - 18), (ex - 24, hy + 2)], (95, 115, 150))  # shine
+            _line(d, [(ex - 30, hy - 44), (ex + 30, hy - 46)], (100, 50, 20), 10)  # relaxed brows
+        _line(d, [(cx - 6, hy - 10), (cx + 6, hy - 10)], (18, 18, 24), 7)
+    else:
+        for side in (-1, 1):
+            ex = cx + side * 45
+            if blink:
+                _line(d, [(ex - 20, hy - 5), (ex + 20, hy - 5)], line, 6)
+            else:
+                oval(ex, hy - 5, 21, 17, (255, 255, 255))
+                oval(ex - side * 4, hy - 1, 8, 8, (20, 15, 10), outline=None)
+                _line(d, [(ex - 14, hy - 12), (ex - 4, hy - 4)], (230, 60, 60), 2)  # bloodshot
+            _line(d, [(ex + side * 36, hy - 54), (ex - side * 24, hy - 20)], (90, 25, 10), 14)  # furious brows
+        vx, vy = cx + 72, hy - 72  # anger vein
+        for dx, dy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+            _line(d, [(vx + dx * 6, vy + dy * 6), (vx + dx * 18, vy + dy * 6), (vx + dx * 18, vy + dy * 18)],
+                  (255, 230, 60), 6)
+        for sx, sy in ((cx - 128, hy - 128), (cx + 128, hy - 128)):  # steam puffs from the ears
+            for j, (ox, oy, r) in enumerate(((0, 0, 16), (-12 if sx < cx else 12, -22, 13), (0, -42, 10))):
+                oval(sx + ox, sy + oy, r, r, (245, 245, 250), outline=None)
+    # nose + mouth (smirk when calm and closed, roaring when open)
+    _poly(d, [(cx - 22, hy + 42), (cx + 22, hy + 42), (cx, hy + 64)], (95, 45, 35))
     gap = (6, 22, 36)[mouth]
-    d.chord([(cx - 50) * S, (hy + 64) * S, (cx + 50) * S, (hy + 72 + gap * 1.5) * S], 0, 180,
-            fill=(120, 20, 25), outline=line, width=4 * S)
-    if mouth:
-        for tx in (cx - 30, cx + 18):  # fangs
-            _poly(d, [(tx, hy + 70), (tx + 12, hy + 70), (tx + 6, hy + 70 + 10 + gap / 4)], (255, 255, 255))
-        oval(cx, hy + 76 + gap * 0.9, 22, 6 + gap / 6, (230, 90, 100), outline=None)
+    if mouth == 0 and cool:
+        _line(d, [(cx - 34, hy + 84), (cx, hy + 92), (cx + 34, hy + 80)], line, 5)
+    else:
+        d.chord([(cx - 50) * S, (hy + 66) * S, (cx + 50) * S, (hy + 74 + gap * 1.5) * S], 0, 180,
+                fill=(120, 20, 25), outline=line, width=4 * S)
+        if mouth:
+            for tx in (cx - 30, cx + 18):  # fangs
+                _poly(d, [(tx, hy + 72), (tx + 12, hy + 72), (tx + 6, hy + 72 + 10 + gap / 4)], (255, 255, 255))
+            oval(cx, hy + 78 + gap * 0.9, 22, 6 + gap / 6, (230, 90, 100), outline=None)
     img = img.resize((w, h), Image.LANCZOS)
     shadow = Image.new("RGBA", img.size, (0, 0, 0, 0))
     shadow.putalpha(img.getchannel("A").point(lambda a: a * 0.35).filter(ImageFilter.GaussianBlur(10)))
@@ -225,65 +253,13 @@ def draw_lion(mouth=0, blink=False, w=420, h=520):
     return out
 
 
-LION_PHOTO_CREDIT = "Lion: Aurelio Arias, CC BY-SA 3.0"
-_lion_cache = {}
-
-
-def _lion_base():
-    """The snarling-lion photo, with extra room below the chin so the jaw can drop."""
-    if "base" not in _lion_cache:
-        from pathlib import Path
-        img = Image.open(Path(__file__).resolve().parent.parent / "assets" / "anchor" / "snarling_lion.jpg").convert("RGB")
-        w, h = img.size
-        ext = Image.new("RGB", (w, h + 90))
-        ext.paste(img, (0, 0))
-        ext.paste(img.crop((0, h - 1, w, h)).resize((w, 90)), (0, h))  # stretch the last row downwards
-        _lion_cache["base"] = ext
-        jaw = Image.new("L", ext.size, 0)
-        ImageDraw.Draw(jaw).polygon([(345, 604), (548, 604), (568, 652), (545, 708), (452, 732), (352, 708),
-                                     (328, 652)], fill=255)
-        _lion_cache["jaw"] = jaw.filter(ImageFilter.GaussianBlur(5))
-    return _lion_cache["base"], _lion_cache["jaw"]
-
-
-def draw_lion_photo(mouth=0, blink=False, w=420, h=520, cool=False):
-    """Babbar Bhai from a real lion photo: the lower jaw drops with the voice; 'cool' adds sunglasses."""
-    base, jaw = _lion_base()
-    gap = (0, 16, 34)[mouth]
-    img = base.copy()
-    if gap:
-        d = ImageDraw.Draw(img)
-        d.ellipse([372, 600, 528, 618 + gap * 1.6], fill=(25, 8, 8))  # dark inside of the mouth
-        d.ellipse([410, 610 + gap * 0.7, 490, 630 + gap * 1.3], fill=(150, 60, 70))  # tongue
-        moved = Image.new("RGB", img.size)
-        moved.paste(base, (0, gap))
-        mask = Image.new("L", img.size, 0)
-        mask.paste(jaw, (0, gap))
-        img.paste(moved, (0, 0), mask)
-    if cool:  # sunglasses for good news
-        d = ImageDraw.Draw(img)
-        for ex in (352, 548):
-            d.rounded_rectangle([ex - 72, 330, ex + 72, 400], radius=28, fill=(15, 15, 20), outline=(60, 60, 70),
-                                width=4)
-            d.polygon([(ex - 50, 342), (ex - 20, 342), (ex - 44, 368)], fill=(90, 110, 140))  # shine
-        d.line([(424, 352), (476, 352)], fill=(15, 15, 20), width=10)
-    ch = 700  # crop to the real photo (no stretched rows), keeping the sprite's aspect ratio
-    cw = int(ch * w / h)
-    face = img.crop((450 - cw // 2, 20, 450 + cw // 2, 20 + ch)).resize((w, h), Image.LANCZOS)
-    out = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    mask = Image.new("L", (w, h), 0)
-    ImageDraw.Draw(mask).rounded_rectangle([0, 0, w - 1, h - 1], radius=28, fill=255)
-    out.paste(face, (0, 0), mask)
-    return out
-
-
-CHARACTERS = {"anchor": draw_anchor, "parrot": draw_parrot, "lion": draw_lion, "lion_photo": draw_lion_photo}
+CHARACTERS = {"anchor": draw_anchor, "parrot": draw_parrot, "lion": draw_lion}
 
 
 def sprites(w=420, h=520, character="anchor", cool=False):
     draw = CHARACTERS.get(character, draw_anchor)
-    if character == "lion_photo":
-        return {(m, b): draw_lion_photo(m, b, w, h, cool) for m in (0, 1, 2) for b in (False, True)}
+    if character == "lion":
+        return {(m, b): draw_lion(m, b, w, h, cool) for m in (0, 1, 2) for b in (False, True)}
     return {(m, b): draw(m, b, w, h) for m in (0, 1, 2) for b in (False, True)}
 
 

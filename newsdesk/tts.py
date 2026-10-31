@@ -36,6 +36,8 @@ class Speaker:
         self.pitch = float(pz.get("pitch", 1.0))
         self.fx = pz.get("voice_fx", "")
         self.emphasis = pz.get("emphasis", False)
+        self.strong_words = pz.get("strong_words", [])
+        self.last_spans = []
         self.shout = SynthesisConfig(length_scale=pz.get("length_scale", t["length_scale"]) * 0.9)
 
     def _pitch(self, audio):
@@ -49,16 +51,19 @@ class Speaker:
 
     def say(self, text, path, pause=0.0):
         """Write text as speech to a wav file; returns the duration in seconds."""
-        if self.emphasis:  # shout the exclamations: a bit faster and louder than the rest
+        self.last_spans = []  # (start, end) seconds of shouted lines, used to switch the anchor's look
+        if self.emphasis:  # shout the exclamations and strong words: a bit faster and louder than the rest
             import re
-            parts = []
+            parts, pos = [], 0
             for sent in [x for x in re.split(r"(?<=[!?।.])\s+", text) if x.strip()]:
-                loud = sent.rstrip().endswith("!")
+                loud = sent.rstrip().endswith("!") or any(w in sent for w in self.strong_words)
                 audio = np.concatenate([c.audio_int16_array for c in
                                         self.voice.synthesize(sent, syn_config=self.shout if loud else self.syn)])
                 if loud:
                     audio = np.clip(audio.astype(np.int32) * 1.35, -32767, 32767).astype(np.int16)
+                    self.last_spans.append((round(pos / self.sr, 2), round((pos + len(audio)) / self.sr, 2)))
                 parts += [audio, np.zeros(int(self.sr * 0.06), dtype=np.int16)]
+                pos += len(audio) + int(self.sr * 0.06)
             speech = np.concatenate(parts)
         else:
             speech = np.concatenate([c.audio_int16_array for c in self.voice.synthesize(text, syn_config=self.syn)])
@@ -80,6 +85,7 @@ def synthesize_episode(episode, cfg, out_dir):
     for seg in episode["segments"]:
         path = audio_dir / f"{seg['id']}.wav"
         seg["duration"] = speaker.say(seg["script"], path, cfg["tts"]["pause_after_segment"])
+        seg["shout_spans"] = speaker.last_spans
         seg["audio"] = str(path.relative_to(out_dir))
         print(f"  {seg['id']:<8} {seg['duration']:6.1f}s")
     return episode

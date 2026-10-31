@@ -72,3 +72,28 @@ class Particles:
                 d.ellipse([x - s, y - s, x + s, y + s], fill=(240, 248, 255))
             else:
                 d.ellipse([x - s, y - s, x + s, y + s], fill=(255, int(120 + 60 * (y / self.H)), 30))
+
+
+def fire_around(alpha_mask, pad, n=16):
+    """Looping flames hugging the outline of a shape (an 'L' mask), e.g. the anchor's head. RGBA frames."""
+    from scipy.ndimage import distance_transform_edt
+    m = np.array(alpha_mask) > 128
+    H, W = m.shape
+    big = np.zeros((H + 2 * pad, W + 2 * pad), bool)
+    big[pad:pad + H, pad:pad + W] = m
+    dist = distance_transform_edt(~big)  # distance outside the shape
+    y, x = np.mgrid[0:big.shape[0], 0:big.shape[1]].astype(np.float32)
+    th = np.arctan2(y - big.shape[0] / 2, x - big.shape[1] / 2)
+    up = 1 + 0.8 * np.clip(-np.sin(th), 0, 1)  # taller flames at the top
+    frames = []
+    for k in range(n):
+        t = 2 * np.pi * k / n
+        noise = 0.5 + 0.5 * (0.5 * np.sin(6 * th + 3 * t) + 0.3 * np.sin(13 * th - 5 * t + 1.3)
+                             + 0.2 * np.sin(27 * th + 8 * t + 0.7))
+        h = pad * (0.35 + 0.65 * noise) * up
+        i = np.clip(1 - dist / h, 0, 1) * (~big)
+        i = i ** 1.2
+        rgb = np.dstack([np.full_like(i, 255), 255 * i ** 0.9 * 0.85, 90 * i ** 4]).astype(np.uint8)
+        a = (np.clip(i * 1.7, 0, 1) * 255).astype(np.uint8)
+        frames.append(Image.fromarray(np.dstack([rgb, a]), "RGBA").filter(ImageFilter.GaussianBlur(1.2)))
+    return frames

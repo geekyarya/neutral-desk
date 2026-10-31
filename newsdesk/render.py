@@ -1,4 +1,5 @@
 """Step 7: compose the news video (graphics + anchor + voice) with FFmpeg."""
+import math
 import subprocess
 import wave
 from pathlib import Path
@@ -264,14 +265,17 @@ def _kenburns(src, p, W, H, flip):
     return src.crop((x0, y0, x0 + cw, y0 + ch)).resize((W, H), Image.BILINEAR)
 
 
-def _pip_sprites(sprites, d):
-    """Round picture-in-picture versions of the anchor (head and shoulders) for photo segments."""
+def _pip_sprites(sprites, d, face_y=None):
+    """Round picture-in-picture versions of the anchor (head and shoulders) for photo segments.
+    face_y: vertical centre of the face as a fraction of the sprite height (photo lion: lower down)."""
     out = {}
     mask = Image.new("L", (d, d), 0)
     ImageDraw.Draw(mask).ellipse([0, 0, d - 1, d - 1], fill=255)
     for key, sp in sprites.items():
         w, h = sp.size
-        crop = sp.crop((int(w * 0.08), int(h * 0.04), int(w * 0.92), int(h * 0.04 + w * 0.84)))
+        top = int(h * face_y - w * 0.5) if face_y else int(h * 0.04)
+        side = 0.0 if face_y else 0.06
+        crop = sp.crop((int(w * side), top, int(w * (1 - side)), top + int(w * (1 - 2 * side))))
         face = Image.new("RGBA", crop.size, (24, 40, 74, 255))
         face.alpha_composite(crop)
         face = face.resize((d, d), Image.LANCZOS)
@@ -322,21 +326,17 @@ def render_episode(episode, cfg, out_dir):
     blinks = anchor_mod.blink_track(n_frames, fps)
     pz = persona(cfg)
     sprites = anchor_mod.sprites(s(420), s(520), pz["character"]) if mode == "puppet" else None
-    pips = _pip_sprites(sprites, s(190)) if sprites else None
-    # mood effects: fire for bad news, ice (+ sunglasses on the photo lion) for good news
+    pip_d = s(pz.get("pip_size", 190))
+    face_y = 0.52 if pz["character"] == "lion" else None  # zoom out a little so the suit and tie show
+    pips = _pip_sprites(sprites, pip_d, face_y) if sprites else None
+    # shout effects: calm = sunglasses on; while shouting / using strong words the face turns red
     fx = None
-    if pz.get("mood_effects") and sprites is not None:
-        from .effects import Particles, fire_ring, ice_ring, vignette
-        ring_d = s(190) + 12
+    if pz.get("shout_effects") and sprites is not None:
         cool = anchor_mod.sprites(s(420), s(520), pz["character"], cool=True)
-        fx = {"fire": fire_ring(ring_d, s(70)), "ice": ice_ring(ring_d, s(46)), "ring_d": ring_d,
-              "pad": {"bad": s(70), "good": s(46)},
-              "vig": {"bad": vignette(W, H, (200, 30, 0), 120), "good": vignette(W, H, (60, 160, 255), 110)},
-              "parts": {"bad": Particles(W, H, "embers"), "good": Particles(W, H, "snow")},
-              "cool": cool, "cool_pips": _pip_sprites(cool, s(190))}
+        fx = {"cool": cool, "cool_pips": _pip_sprites(cool, pip_d, face_y)}
     shake = pz.get("shake", False)
     anchor_pos = (s(830), s(92))
-    pip_pos = (W - s(232), H - s(52) - s(222))
+    pip_pos = (W - pip_d - s(42), H - s(52) - pip_d - s(32))
 
     # photos for each story (fetched earlier by media.add_story_images)
     photos = {}
@@ -389,10 +389,6 @@ def render_episode(episode, cfg, out_dir):
                 L.story_panel(layer, seg, stories.index(seg) + 1, len(stories), n_facts=stage[0], rest=stage[1])
             if mode != "puppet":
                 L.desk(layer)
-            if pz["character"] == "lion_photo":
-                dd = ImageDraw.Draw(layer)
-                small.draw(dd, (W - small.length(dd, anchor_mod.LION_PHOTO_CREDIT) - s(14), s(64)),
-                           anchor_mod.LION_PHOTO_CREDIT, (220, 220, 220), stroke=2, stroke_fill=(0, 0, 0))
         cache[key] = layer
         return layer
 
@@ -422,37 +418,36 @@ def render_episode(episode, cfg, out_dir):
                 img = Image.blend(img, nxt, (p - 0.92) / 0.08)
             img = img.convert("RGBA")
             img.alpha_composite(card(si, stage))
-            credit = "Photo: " + imgs[k][1] + (f"  |  {anchor_mod.LION_PHOTO_CREDIT}" if pz["character"] == "lion_photo"
-                                               else "")
+            credit = "Photo: " + imgs[k][1]
             dd = ImageDraw.Draw(img)
             cw = small.length(dd, credit)
             small.draw(dd, (W - cw - s(14), s(64)), credit, (230, 230, 230), stroke=2, stroke_fill=(0, 0, 0))
-            mood = seg.get("mood") if fx else None
-            pip = (fx["cool_pips"] if mood == "good" else pips)[(mouth, blink)]
-            jx, jy = ((i * 7) % 9 - 4, (i * 5) % 7 - 3) if shake and mouth == 2 else (0, 0)
-            pos = (pip_pos[0] + s(jx), pip_pos[1] + s(jy))
-            if mood in ("bad", "good"):
-                img.alpha_composite(fx["vig"][mood])
-                pad = fx["pad"][mood]
-                ring = fx["fire"][i % len(fx["fire"])] if mood == "bad" else fx["ice"]
-                img.alpha_composite(ring, (pos[0] - pad, pos[1] - pad))
-                fx["parts"][mood].draw(img, tl)
+            shouting = bool(fx) and any(a <= tl <= b for a, b in seg.get("shout_spans") or [])
+            pip = (fx["cool_pips"] if fx and not shouting else pips)[(mouth, blink)]
+            pip = pip.rotate(2.5 * math.sin(tl * 2.2), resample=Image.BICUBIC)  # gentle head tilt
+            jx, jy = ((i * 7) % 9 - 4, (i * 5) % 7 - 3) if shake and shouting and mouth == 2 else (0, 0)
+            pos = (pip_pos[0] + s(jx), pip_pos[1] + s(jy) + int(s(3) * math.sin(tl * 7)))
             img.alpha_composite(pip, pos)
         else:
-            mood = seg.get("mood") if fx and seg["kind"] == "story" else None
-            key = ("frame", stage, mouth, blink)
-            if key not in cache:
+            if fx:  # animated lion: head bob/tilt each frame, calm (shades) or burning while shouting
+                shouting = any(a <= tl <= b for a, b in seg.get("shout_spans") or [])
                 img = card(si, stage).copy()
-                if sprites is not None:
-                    sp = (fx["cool"] if mood == "good" else sprites)[(mouth, blink)]
-                    img.alpha_composite(sp, anchor_pos)
-                    L.desk(img)
-                if mood in ("bad", "good"):
-                    img.alpha_composite(fx["vig"][mood])
-                cache[key] = img
-            img = cache[key].copy()
-            if mood in ("bad", "good"):
-                fx["parts"][mood].draw(img, tl)
+                sp = (sprites if shouting else fx["cool"])[(mouth, blink)]
+                sp = sp.rotate(2 * math.sin(tl * 1.9), resample=Image.BICUBIC)
+                jx, jy = ((i * 7) % 9 - 4, (i * 5) % 7 - 3) if shake and shouting and mouth == 2 else (0, 0)
+                pos = (anchor_pos[0] + s(jx), anchor_pos[1] + s(jy) + int(s(4) * math.sin(tl * 6)))
+                img.alpha_composite(sp, pos)
+                L.desk(img)
+                img.paste(topbar, (0, 0))  # the AI-disclosure bar always stays on top of the flames
+            else:
+                key = ("frame", stage, mouth, blink)
+                if key not in cache:
+                    img = card(si, stage).copy()
+                    if sprites is not None:
+                        img.alpha_composite(sprites[(mouth, blink)], anchor_pos)
+                        L.desk(img)
+                    cache[key] = img
+                img = cache[key].copy()
 
         if seg["kind"] == "story" and tl < TRANSITION:  # branded wipe: panel sweeps in, then out
             x = tl / TRANSITION

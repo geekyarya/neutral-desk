@@ -34,12 +34,15 @@ PERSONAS = {
         },
     },
     "babbar": {
-        "character": "lion_photo",
+        "character": "lion",
         "pitch": 0.93,          # a bit deeper
         "length_scale": 0.72,   # faster, more urgent
         "emphasis": True,       # sentences ending in "!" are shouted: louder and faster
         "shake": True,          # the anchor jolts on loud moments
-        "mood_effects": True,   # fire for bad news, ice + sunglasses for good news
+        "shout_effects": True,  # calm = sunglasses on; shouting/strong words = face turns red with anger
+        "pip_size": 250,        # bigger corner circle
+        "strong_words": ["बकवास", "घटिया", "बेशर्म", "नौटंकी", "सड़ा", "भाड़", "साला", "शर्मनाक", "हद हो गई",
+                         "तमाशा", "लापरवाही"],
         # louder and "in your face": cut the boominess, boost presence, compress hard
         "voice_fx": "highpass=f=110,equalizer=f=2500:t=q:w=1.2:g=6,acompressor=threshold=-22dB:ratio=8:attack=3:"
                     "release=60:makeup=6dB,alimiter=limit=0.95",
