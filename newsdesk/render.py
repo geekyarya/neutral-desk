@@ -199,10 +199,11 @@ class Layout:
         text = sep.join(headlines) + sep
         tmp = ImageDraw.Draw(Image.new("RGB", (1, 1)))
         tw = int(self.tlen(tmp, text, "tick"))
-        strip = Image.new("RGB", (tw * 2, h), (245, 246, 250))
+        copies = self.W // max(tw, 1) + 2  # enough repeats to always fill the screen width
+        strip = Image.new("RGB", (tw * copies, h), (245, 246, 250))
         d = ImageDraw.Draw(strip)
-        for k in (0, tw):
-            self.text(d, (k, s(10)), text, "tick", (20, 28, 48))
+        for k in range(copies):
+            self.text(d, (k * tw, s(10)), text, "tick", (20, 28, 48))
         return strip, tw
 
 

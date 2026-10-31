@@ -189,13 +189,25 @@ def draw_lion(mouth=0, blink=False, w=420, h=520, cool=False):
         ry = (98 + 42 * low) * scale
         return cx + rx * math.cos(t), hy + ry * math.sin(t)
 
-    # suit, shirt, lapels, tie
-    _poly(d, [(cx - 182, h), (cx - 168, 404), (cx - 92, 362), (cx + 92, 362), (cx + 168, 404), (cx + 182, h)],
-          (34, 38, 54))
-    _poly(d, [(cx - 46, 362), (cx + 46, 362), (cx, 452)], (242, 242, 248))
-    _poly(d, [(cx - 46, 362), (cx - 96, 372), (cx - 58, 505), (cx - 8, 452)], (50, 56, 76))
-    _poly(d, [(cx + 46, 362), (cx + 96, 372), (cx + 58, 505), (cx + 8, 452)], (50, 56, 76))
-    _poly(d, [(cx - 12, 370), (cx + 12, 370), (cx + 16, 444), (cx, 466), (cx - 16, 444)], (200, 24, 34))
+    # casual look: black crew-neck t-shirt with fur-coloured arms, and a chunky silver chain
+    fur = face
+    for side in (-1, 1):  # arms coming out of the sleeves
+        d.ellipse([(cx + side * 168 - 34) * S, 430 * S, (cx + side * 168 + 34) * S, (h + 60) * S], fill=fur)
+    _poly(d, [(cx - 196, h), (cx - 200, 430), (cx - 150, 372), (cx - 60, 356), (cx + 60, 356), (cx + 150, 372),
+              (cx + 200, 430), (cx + 196, h)], (24, 24, 28))
+    for side in (-1, 1):  # sleeve hems
+        _line(d, [(cx + side * 200, 430), (cx + side * 136, 470)], (45, 45, 52), 6)
+    d.chord([(cx - 62) * S, 330 * S, (cx + 62) * S, 392 * S], 0, 180, fill=fur)  # neck in the collar
+    d.arc([(cx - 64) * S, 328 * S, (cx + 64) * S, 394 * S], 0, 180, fill=(55, 55, 62), width=7 * S)
+    for k in range(17):  # chain links along a U around the neck
+        a = math.pi * (0.08 + 0.84 * k / 16)
+        x, y = cx + 74 * math.cos(a), 368 + 62 * math.sin(a)
+        rx, ry = (9, 6) if k % 2 else (6, 9)
+        d.ellipse([(x - rx) * S, (y - ry) * S, (x + rx) * S, (y + ry) * S], fill=(200, 204, 214),
+                  outline=(120, 124, 136), width=2 * S)
+    d.ellipse([(cx - 15) * S, 424 * S, (cx + 15) * S, 454 * S], fill=(215, 218, 228), outline=(120, 124, 136),
+              width=3 * S)  # pendant
+    d.ellipse([(cx - 6) * S, 431 * S, (cx + 2) * S, 439 * S], fill=(255, 255, 255))
     # flowing mane: pointed locks swept back, longer on top and sides, framing a narrow chin
     for col, sc, n, twist in ((mane_dark, 1.62, 24, 0.10), (mane, 1.42, 22, 0.16)):
         pts = []
@@ -225,14 +237,22 @@ def draw_lion(mouth=0, blink=False, w=420, h=520, cool=False):
             d.ellipse([(x - r) * S, (y - r) * S, (x + r) * S, (y + r) * S], fill=(110, 60, 40))
     # eyes: aviator sunglasses when calm, furious almond eyes when angry
     if cool:
+        frame, lens = (14, 14, 18), (34, 40, 58)
         for side in (-1, 1):
-            ex = cx + side * 42
-            d.polygon(P([(ex - side * 6, hy - 30), (ex + side * 40, hy - 26), (ex + side * 34, hy + 6),
-                         (ex + side * 14, hy + 14), (ex - side * 6, hy + 4)]), fill=(16, 16, 22))
-            d.polygon(P([(ex + side * 4, hy - 22), (ex + side * 16, hy - 22), (ex + side * 6, hy - 6)]),
-                      fill=(95, 115, 150))
-            _line(d, [(ex - side * 4, hy - 46), (ex + side * 40, hy - 44)], (95, 45, 18), 9)  # relaxed brows
-        _line(d, [(cx - 8, hy - 24), (cx + 8, hy - 24)], (16, 16, 22), 5)
+            ex = cx + side * 44
+            _line(d, [(ex + side * 34, hy - 22), (ex + side * 70, hy - 30)], frame, 7)  # arm to the ear
+            outer = [(ex - side * 34, hy - 30), (ex + side * 40, hy - 32), (ex + side * 38, hy - 4),
+                     (ex + side * 26, hy + 14), (ex - side * 22, hy + 14), (ex - side * 34, hy)]
+            inner = [(ex - side * 28, hy - 24), (ex + side * 34, hy - 26), (ex + side * 32, hy - 5),
+                     (ex + side * 22, hy + 8), (ex - side * 19, hy + 8), (ex - side * 28, hy - 2)]
+            d.polygon(P(outer), fill=frame)
+            d.polygon(P(inner), fill=lens)
+            d.polygon(P([(ex - side * 22, hy - 22), (ex - side * 10, hy - 22), (ex - side * 22, hy + 4),
+                         (ex - side * 28, hy + 2)]), fill=(120, 135, 165))  # glare streak
+            d.polygon(P([(ex + side * 2, hy - 23), (ex + side * 8, hy - 23), (ex - side * 6, hy + 6),
+                         (ex - side * 12, hy + 6)]), fill=(80, 92, 118))
+            _line(d, [(ex - side * 30, hy - 48), (ex + side * 36, hy - 46)], (95, 45, 18), 9)  # relaxed brows
+        _line(d, [(cx - 12, hy - 22), (cx, hy - 26), (cx + 12, hy - 22)], frame, 7)  # bridge
     else:
         for side in (-1, 1):
             ex = cx + side * 42

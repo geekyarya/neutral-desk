@@ -86,7 +86,8 @@ def render_short(seg, cfg, speaker, out_dir):
     shorts_dir.mkdir(exist_ok=True)
     name = cfg["channel"].get("spoken_name") or cfg["channel"]["name"]
     wav = shorts_dir / f"{seg['id']}.wav"
-    duration = speaker.say(f"{short_text(seg)} {t['short_outro'].format(name=name)}", wav, 0.4)
+    duration = speaker.say(f"{short_text(seg)} {t['short_outro'].format(name=name)}", wav, 0.4,
+                           "angry" if seg.get("angry") else "calm")
     audio, sr = read_wav(wav)
     n = int(len(audio) / sr * FPS)
 

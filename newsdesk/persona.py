@@ -35,6 +35,18 @@ PERSONAS = {
     },
     "babbar": {
         "character": "lion",
+        "tts_engine": "gemini",
+        "gemini_voice": "Fenrir",  # excitable male voice
+        "tts_styles": {
+            "angry": "Read this in Hindi as Babbar Bhai, a fiery Indian TV news anchor: loud and furious, really "
+                     "SHOUT the lines ending in '!', drip sarcasm on the taunts, punchy and fast, with natural "
+                     "Hindi rhythm, pauses and emphasis",
+            "calm": "Read this in Hindi as Babbar Bhai, a cool, confident Indian TV news anchor: relaxed swagger, "
+                    "smirking wit, lively, natural Hindi rhythm and clear articulation",
+            "intro": "Read this in Hindi as Babbar Bhai opening his news show: big, energetic, loud welcome, "
+                     "natural Hindi rhythm",
+            "default": "Read this in Hindi as Babbar Bhai, a lively Indian TV news anchor with natural rhythm",
+        },
         "pitch": 0.93,          # a bit deeper
         "length_scale": 0.72,   # faster, more urgent
         "emphasis": True,       # sentences ending in "!" are shouted: louder and faster

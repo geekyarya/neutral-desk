@@ -53,6 +53,8 @@ llm:
 # Free offline voice (Piper). Hindi voices: hi_IN-rohan-medium (male), hi_IN-pratham-medium (male),
 # hi_IN-priyamvada-medium (female). English: en/en_US/ryan/medium/en_US-ryan-medium
 tts:
+  engine: "piper"            # default engine; a persona can choose "gemini" (expressive, uses GEMINI_API_KEY)
+  gemini_models: ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts"]  # tried in order, plus any found
   voice: "hi/hi_IN/rohan/medium/hi_IN-rohan-medium"
   length_scale: 0.8          # speed: 0.8 = 1.25x faster, 1.0 = normal, >1 slower
   pause_after_segment: 0.6   # seconds

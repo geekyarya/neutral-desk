@@ -84,7 +84,7 @@ def render_reel(content, cfg, out_dir):
     outro = t["reel_outro"].format(name=name)
     wav = out_dir / "voice.wav"
     speaker = Speaker(cfg)
-    speaker.say(f"{content['script']} {outro}", wav, 0.5)
+    speaker.say(f"{content['script']} {outro}", wav, 0.5, "angry" if content.get("angry") else "calm")
     audio, sr = read_wav(wav)
     n = int(len(audio) / sr * FPS)
     chunks = caption_chunks(f"{content['script']} {outro}")
