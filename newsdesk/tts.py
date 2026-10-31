@@ -46,6 +46,7 @@ class Speaker:
         self.pz = persona(cfg)
         self.engine = self.pz.get("tts_engine", self.t.get("engine", "piper"))
         self.gemini_off = False
+        self.pinned = None  # when set, only this Gemini speech model is used (keeps one voice per episode)
         self._piper_voice = None
         self.last_engine = None
         self.last_spans = []
@@ -83,7 +84,7 @@ class Speaker:
                 "generationConfig": {"responseModalities": ["AUDIO"], "speechConfig": {"voiceConfig": {
                     "prebuiltVoiceConfig": {"voiceName": self.pz.get("gemini_voice", "Fenrir")}}}}}
         last = None
-        for model in self._gemini_models():
+        for model in ([self.pinned] if self.pinned else self._gemini_models()):
             for attempt in range(3):
                 r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
                                   headers={"x-goog-api-key": key}, json=body, timeout=300)
@@ -170,21 +171,27 @@ def segment_mood(seg):
 
 
 def synthesize_episode(episode, cfg, out_dir):
+    """Voice every segment. All segments must come from the same voice: if Gemini switched speech model (or fell
+    back to the offline voice) part-way, redo the whole episode with the last model that worked, then offline."""
     speaker = Speaker(cfg)
     audio_dir = Path(out_dir) / "audio"
     audio_dir.mkdir(exist_ok=True)
-    for attempt in range(2):
-        engines = set()
+    for attempt in range(3):
+        used = []
         for seg in episode["segments"]:
             path = audio_dir / f"{seg['id']}.wav"
             seg["duration"] = speaker.say(seg["script"], path, cfg["tts"]["pause_after_segment"], segment_mood(seg))
             seg["audio"] = str(path.relative_to(out_dir))
-            engines.add((speaker.last_engine or "piper").split(":")[0])
+            used.append(speaker.last_engine or "piper")
             print(f"  {seg['id']:<8} {seg['duration']:6.1f}s  [{speaker.last_engine}]")
-        if len(engines) <= 1:
+        if len(set(used)) <= 1:
             break
-        print("   voices got mixed (Gemini stopped mid-way): redoing the episode in one voice")
-        speaker.gemini_off = True
+        print(f"   voices got mixed ({', '.join(dict.fromkeys(used))}): redoing the episode in one voice")
+        last = used[-1]
+        if last.startswith("gemini:") and not speaker.pinned:
+            speaker.pinned = last.split(":", 1)[1]
+        else:
+            speaker.gemini_off = True
     return episode
 
 

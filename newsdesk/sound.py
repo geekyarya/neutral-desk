@@ -144,22 +144,24 @@ def mix(voice, sr, cues, volume=0.12, style="chill", hits=(), spans=None, memes=
     if spans is None:
         spans = [(0.0, total, style)]
     music = music_track(spans, total, sr)
+    music = np.pad(music, (0, max(0, len(v) - len(music))))[: len(v)]  # exactly as long as the voice
     # duck: quieter while someone is speaking (smoothed loudness of the voice)
-    win = int(sr * 0.3)
+    win = max(1, min(int(sr * 0.3), len(v)))
     loud = np.convolve(np.abs(v), np.ones(win) / win, mode="same")
     duck = 1 - 0.6 * np.clip(loud / (np.percentile(loud, 90) or 1), 0, 1)
     out = v + music * volume * duck
-    w = whoosh(sr)
+    def add(snd, t, gain=1.0):  # drop a sound effect at second t, clipped to the clip's length
+        i = int(t * sr)
+        if 0 <= i < len(out):
+            n = min(len(snd), len(out) - i)
+            out[i:i + n] += snd[:n] * gain
+
+    w, hh, mp = whoosh(sr), hit(sr), meme_pop(sr)
     for c in cues:
-        i = int(c * sr)
-        out[i:i + len(w)] += w[: len(out) - i] * 0.6
-    hh = hit(sr)
+        add(w, c, 0.6)
     for c in hits:
-        i = int(c * sr)
-        out[i:i + len(hh)] += hh[: len(out) - i]
-    mp = meme_pop(sr)
+        add(hh, c)
     for c in memes:
-        i = int(c * sr)
-        out[i:i + len(mp)] += mp[: len(out) - i]
+        add(mp, c)
     out = np.tanh(out * 1.1) / np.tanh(1.1)  # soft limiter
     return (np.clip(out, -1, 1) * 32767).astype(np.int16)
