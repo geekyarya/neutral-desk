@@ -88,11 +88,21 @@ class Speaker:
                 r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
                                   headers={"x-goog-api-key": key}, json=body, timeout=300)
                 if r.ok:
-                    part = r.json()["candidates"][0]["content"]["parts"][0]["inlineData"]
-                    rate = int((re.search(r"rate=(\d+)", part.get("mimeType", "")) or [0, 24000])[1])
-                    pcm = np.frombuffer(base64.b64decode(part["data"]), dtype=np.int16)
-                    self.last_engine = f"gemini:{model}"
-                    return pcm, rate
+                    cand = (r.json().get("candidates") or [{}])[0]
+                    parts = (cand.get("content") or {}).get("parts") or []
+                    part = next((p_["inlineData"] for p_ in parts if "inlineData" in p_), None)
+                    if part:
+                        rate = int((re.search(r"rate=(\d+)", part.get("mimeType", "")) or [0, 24000])[1])
+                        pcm = np.frombuffer(base64.b64decode(part["data"]), dtype=np.int16)
+                        self.last_engine = f"gemini:{model}"
+                        return pcm, rate
+                    # empty answer (it happens now and then, or a filter tripped): retry, then the next model
+                    last = f"{model}: no audio (finishReason={cand.get('finishReason')})"
+                    print(f"   {last}; retrying")
+                    if attempt < 2:
+                        time.sleep(3)
+                        continue
+                    break
                 last = f"{model}: HTTP {r.status_code} {r.text[:160]}"
                 if r.status_code == 429 and "PerDay" not in r.text and attempt < 2:
                     time.sleep(25)  # per-minute limit: wait and retry
