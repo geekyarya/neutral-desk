@@ -265,3 +265,13 @@ def used_urls_from_github(hours=30):
         if m:
             used |= set(json.loads(m.group(1)))
     return used
+
+
+def reel_already_posted(reel_id):
+    """True if a Reel for this slot (release tag reel-<id>-...) was already made today."""
+    repo, token = os.environ.get("GITHUB_REPOSITORY"), os.environ.get("GITHUB_TOKEN")
+    if not (repo and token):
+        return False
+    r = requests.get(f"https://api.github.com/repos/{repo}/releases", params={"per_page": 50}, timeout=30,
+                     headers={"Authorization": f"Bearer {token}"})
+    return r.ok and any(rel["tag_name"].startswith(f"reel-{reel_id}-") for rel in r.json())

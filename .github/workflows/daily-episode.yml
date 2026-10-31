@@ -21,6 +21,10 @@ on:
         description: "Upload to YouTube"
         type: boolean
         default: true
+      guard:
+        description: "Skip if today's episode already exists (for timed triggers)"
+        type: boolean
+        default: false
       llm:
         description: "Writer (test the backup with ollama)"
         type: choice
@@ -43,9 +47,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # a manual run always goes ahead; a scheduled one skips if today's episode already exists
+          # a manual run always goes ahead; scheduled/guarded ones skip if today's episode already exists
           N=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=script-$(date -u +%F)" --jq '.total_count')
-          if [ "${{ github.event_name }}" = "schedule" ] && [ "${N:-0}" -gt 0 ]; then
+          if { [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.guard }}" = "true" ]; } && [ "${N:-0}" -gt 0 ]; then
             echo "Today's episode already exists; skipping."
             echo "done=true" >> "$GITHUB_OUTPUT"
           else

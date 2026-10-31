@@ -101,13 +101,17 @@ def stage_reel(cfg, a):
     import os
     from newsdesk.config import ROOT
     from newsdesk.reel_render import render_reel
-    from newsdesk.reels import caption_text, ist_now, make_reel_content, pick_slot, used_urls_from_github
+    from newsdesk.reels import (caption_text, ist_now, make_reel_content, pick_slot, reel_already_posted,
+                                used_urls_from_github)
     slot = pick_slot(cfg, a.slot)
     slot_no = cfg["reels"]["slots"].index(slot)
     reel_id = ist_now().strftime("%Y-%m-%d-") + f"{slot['hour']:02d}"
     d = ROOT / "output" / "reels" / reel_id
     d.mkdir(parents=True, exist_ok=True)
     print(f"Reel {reel_id}: {slot['type']}")
+    if os.environ.get("SKIP_IF_DONE") == "true" and reel_already_posted(reel_id):
+        print("This slot was already posted today; skipping.")
+        return
     used = used_urls_from_github()
     for m in (ROOT / "output" / "reels").glob("*/meta.json"):  # local runs
         used |= set(json.loads(m.read_text(encoding="utf-8")).get("urls", []))

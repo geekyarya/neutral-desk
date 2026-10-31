@@ -21,6 +21,10 @@ on:
         description: "Post to Instagram"
         type: boolean
         default: true
+      guard:
+        description: "Skip if this slot was already posted today (for timed triggers)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write   # to host the video as a release file
@@ -54,8 +58,10 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SKIP_IF_DONE: ${{ github.event_name == 'schedule' || inputs.guard }}
         run: python run.py reel ${{ inputs.slot != '' && format('--slot {0}', inputs.slot) || '' }}
       - name: Host the video (GitHub release file)
+        if: env.REEL_ID != ''
         run: |
           TAG="reel-${REEL_ID}-${GITHUB_RUN_ID}"
           FILE="output/reels/${REEL_ID}/${TAG}.mp4"
@@ -65,7 +71,7 @@ jobs:
             --notes "Automated Reel. <!--urls:${URLS}-->"
           echo "VIDEO_URL=https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${TAG}.mp4" >> "$GITHUB_ENV"
       - name: Post to Instagram
-        if: env.HAS_IG == 'true' && (github.event_name == 'schedule' || inputs.publish)
+        if: env.REEL_ID != '' && env.HAS_IG == 'true' && (github.event_name == 'schedule' || inputs.publish)
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
         run: python run.py reel-publish --reel "$REEL_ID" --video-url "$VIDEO_URL"
