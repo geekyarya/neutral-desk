@@ -306,7 +306,7 @@ def render_episode(episode, cfg, out_dir):
     if vcfg.get("music", True):
         from .sound import mix
         mixed = mix(audio, sr, [st for st, sg in zip(starts, segs) if sg["kind"] == "story"],
-                    vcfg.get("music_volume", 0.12))
+                    vcfg.get("music_volume", 0.12), persona(cfg).get("music", "calm"))
         audio_path = out_dir / "audio" / "episode_mix.wav"
         with wave.open(str(audio_path), "wb") as w:
             w.setnchannels(1)
@@ -351,6 +351,7 @@ def render_episode(episode, cfg, out_dir):
     small = Font(s(13))
 
     cache = {"seg": None}
+    breaking = persona(cfg).get("breaking", False)
 
     def card(si, stage):
         """Static layer for a segment at a reveal stage (cached per segment)."""
@@ -430,6 +431,13 @@ def render_episode(episode, cfg, out_dir):
             lw = L.tlen(dd, label, "thumb")
             if right - left > lw:
                 L.text(dd, ((left + right - lw) / 2, H / 2 - s(40)), label, "thumb", WHITE)
+
+        if breaking and seg["kind"] == "story" and int(tl * 2) % 2 == 0:  # flashing "BREAKING" pill
+            dd = ImageDraw.Draw(img)
+            bx = W // 2 - s(70)
+            dd.rounded_rectangle([bx, s(12), bx + s(140), s(44)], radius=s(6), fill=(220, 20, 30))
+            L.text(dd, (bx + (s(140) - L.tlen(dd, L.t["breaking"], "label")) / 2, s(15)), L.t["breaking"], "label",
+                   WHITE)
 
         img = img.convert("RGB")
         dd = ImageDraw.Draw(img)

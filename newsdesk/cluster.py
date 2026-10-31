@@ -68,12 +68,21 @@ def cluster_stories(articles, cfg):
     for s in india + world:
         s["trend_hits"] = trend_hits(s, terms)
         s["reddit_hits"] = _buzz(s, hot)
+        s["hot_hits"] = _hot(s, ed.get("hot_topics") or [])
         s["score"] = (min(s["n_outlets"], 15) + 0.3 * (s["n_articles"] - s["n_outlets"]) + s["prominence"]
-                      + 3 * min(s["trend_hits"], 2) + 1.5 * min(s["reddit_hits"], 2))
+                      + 3 * min(s["trend_hits"], 2) + 1.5 * min(s["reddit_hits"], 2)
+                      + ed.get("hot_weight", 0) * min(s["hot_hits"], 2))
     india.sort(key=lambda s: (s["score"], s["foreign"]), reverse=True)
     world.sort(key=lambda s: (s["score"], len(s["countries"])), reverse=True)
     # extra India candidates: the editor drops ones that turn out not to be about India
     return india[: ed["india_stories"] + 4], world[: ed["world_stories"] + 1]
+
+
+def _hot(story, words):
+    """How many 'hot' keywords (war, protest, controversy...) appear in the story's headlines."""
+    import re
+    text = " ".join(a["title"] for a in story["articles"][:15]).lower()
+    return sum(bool(re.search(rf"\b{re.escape(w.lower())}", text)) for w in words)
 
 
 def _story_text(items):

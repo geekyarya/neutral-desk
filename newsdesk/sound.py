@@ -13,7 +13,11 @@ def _env(n, sr, attack, release):
     return e
 
 
-def music_bed(seconds, sr, bpm=92):
+TENSE = [(220.00, 261.63, 329.63), (174.61, 220.00, 261.63), (146.83, 174.61, 220.00), (164.81, 207.65, 246.94)]
+
+
+def music_bed(seconds, sr, bpm=92, style="calm"):
+    chords = TENSE if style == "tense" else CHORDS
     beat = 60 / bpm
     bar = 4 * beat
     out = np.zeros(int(sr * (seconds + bar * 2)), np.float32)
@@ -22,7 +26,7 @@ def music_bed(seconds, sr, bpm=92):
     tt = np.arange(n) / sr
     k = 0
     while k * t_chord < seconds + t_chord:
-        root = CHORDS[k % len(CHORDS)]
+        root = chords[k % len(chords)]
         start = int(k * t_chord * sr)
         # soft pad: triad + octave, slightly detuned for warmth
         pad = sum(np.sin(2 * np.pi * f * tt) + 0.6 * np.sin(2 * np.pi * f * 1.003 * tt) for f in root)
@@ -42,6 +46,14 @@ def music_bed(seconds, sr, bpm=92):
             i0 = start + int(j * step * sr)
             if i0 < len(out):
                 out[i0:i0 + m] += 0.05 * pluck[: len(out) - i0]
+        if style == "tense":  # pounding kick on every beat
+            kn = int(sr * 0.25)
+            kt = np.arange(kn) / sr
+            kick = np.sin(2 * np.pi * (45 + 80 * np.exp(-kt * 30)) * kt) * np.exp(-kt * 12)
+            for j in range(int(t_chord / beat)):
+                i0 = start + int(j * beat * sr)
+                if i0 < len(out):
+                    out[i0:i0 + kn] += 0.35 * kick[: len(out) - i0]
         k += 1
     return out[: int(sr * seconds)]
 
@@ -59,10 +71,10 @@ def whoosh(sr, dur=0.5):
     return out * env * 0.5
 
 
-def mix(voice, sr, cues, volume=0.12):
+def mix(voice, sr, cues, volume=0.12, style="calm"):
     """voice: int16 array. cues: seconds where a transition whoosh plays. Music ducks under speech."""
     v = voice.astype(np.float32) / 32768
-    music = music_bed(len(v) / sr, sr)
+    music = music_bed(len(v) / sr, sr, bpm=118 if style == "tense" else 92, style=style)
     music = music / (np.abs(music).max() or 1)
     # duck: quieter while someone is speaking (smoothed loudness of the voice)
     win = int(sr * 0.3)

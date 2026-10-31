@@ -29,17 +29,19 @@ class Speaker:
         from piper.config import SynthesisConfig
         t = cfg["tts"]
         self.voice = PiperVoice.load(str(ensure_voice(t["voice"])))
-        self.syn = SynthesisConfig(length_scale=t["length_scale"])
-        self.sr = self.voice.config.sample_rate
         from .persona import persona
-        self.pitch = float(persona(cfg).get("pitch", 1.0))
+        pz = persona(cfg)
+        self.syn = SynthesisConfig(length_scale=pz.get("length_scale", t["length_scale"]))
+        self.sr = self.voice.config.sample_rate
+        self.pitch = float(pz.get("pitch", 1.0))
+        self.fx = pz.get("voice_fx", "")
 
     def _pitch(self, audio):
         """Raise the voice's pitch without changing its speed (FFmpeg: resample up, then slow back down)."""
         import subprocess
         p = subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "s16le", "-ar", str(self.sr), "-ac", "1",
                             "-i", "-", "-af", f"asetrate={int(self.sr * self.pitch)},aresample={self.sr},"
-                            f"atempo={1 / self.pitch:.4f}", "-f", "s16le", "-"],
+                            f"atempo={1 / self.pitch:.4f}" + (f",{self.fx}" if self.fx else ""), "-f", "s16le", "-"],
                            input=audio.tobytes(), capture_output=True, check=True)
         return np.frombuffer(p.stdout, dtype=np.int16)
 
@@ -47,7 +49,7 @@ class Speaker:
         """Write text as speech to a wav file; returns the duration in seconds."""
         chunks = [c.audio_int16_array for c in self.voice.synthesize(text, syn_config=self.syn)]
         speech = np.concatenate(chunks)
-        if abs(self.pitch - 1.0) > 0.01:
+        if abs(self.pitch - 1.0) > 0.01 or self.fx:
             speech = self._pitch(speech)
         audio = np.concatenate([speech, np.zeros(int(self.sr * pause), dtype=np.int16)])
         with wave.open(str(path), "wb") as w:

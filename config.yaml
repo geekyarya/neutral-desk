@@ -7,7 +7,8 @@
 #   mitthu  = "Mitthu Bhai", a witty parrot anchor (funny Hinglish delivery, playful high voice)
 #   classic = the serious human anchor
 style:
-  persona: "mitthu"
+  persona: "babbar"
+#   babbar  = "Babbar Bhai", a fiery shouting lion anchor (loud, sarcastic, strong-but-not-abusive words)
 
 channel:
   name: "Zero Masala"                # shown on screen
@@ -26,6 +27,12 @@ editor:
   fetch_full_text: true     # download article text (better facts, slower)
   max_articles_per_story: 8
   cluster_distance: 0.85    # lower = stricter grouping of articles into one story
+  # "hot" stories rank higher: each keyword found in the headlines adds hot_weight (max 2 keywords)
+  hot_weight: 4
+  hot_topics: ["war", "attack", "strike", "missile", "drone", "army", "military", "border", "clash", "tension",
+               "ceasefire", "terror", "protest", "agitation", "bandh", "march", "controversy", "row", "slams",
+               "outrage", "scam", "raid", "arrest", "ban", "boycott", "resign", "probe", "allegation",
+               "Pakistan", "China", "infiltration", "crackdown", "unrest"]
   # spelling mistakes the AI keeps making: "wrong": "right" (applied to all text, screen and voice)
   spelling_fixes:
     "जलडममध्य": "जलडमरूमध्य"

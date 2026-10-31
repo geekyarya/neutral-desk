@@ -163,7 +163,69 @@ def draw_parrot(mouth=0, blink=False, w=420, h=520):
     return out
 
 
-CHARACTERS = {"anchor": draw_anchor, "parrot": draw_parrot}
+def draw_lion(mouth=0, blink=False, w=420, h=520):
+    """Babbar Bhai: an angry lion anchor with a wild mane, furious eyebrows and an anger vein. mouth: 0..2."""
+    import math
+    img = Image.new("RGBA", (w * S, h * S), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    cx, hy = w // 2, 200
+    line = (60, 30, 15)
+
+    def oval(x, y, rx, ry, fill, outline=line, width=4):
+        d.ellipse([(x - rx) * S, (y - ry) * S, (x + rx) * S, (y + ry) * S], fill=fill,
+                  outline=outline, width=width * S if outline else 0)
+
+    # suit body + tie
+    _poly(d, [(cx - 175, h), (cx - 160, 400), (cx - 90, 360), (cx + 90, 360), (cx + 160, 400), (cx + 175, h)],
+          (40, 40, 48))
+    _poly(d, [(cx - 45, 360), (cx + 45, 360), (cx, 450)], (240, 240, 245))
+    _poly(d, [(cx - 12, 368), (cx + 12, 368), (cx + 16, 440), (cx, 462), (cx - 16, 440)], (200, 20, 30))
+    # spiky mane
+    pts = []
+    for k in range(28):
+        a = 2 * math.pi * k / 28
+        r = 175 if k % 2 == 0 else 140
+        pts.append((cx + r * math.cos(a), hy + 10 + r * 0.95 * math.sin(a)))
+    _poly(d, pts, (150, 70, 25))
+    oval(cx, hy + 10, 138, 132, (175, 90, 35), outline=None)
+    # ears + face
+    oval(cx - 92, hy - 92, 30, 30, (230, 160, 60))
+    oval(cx + 92, hy - 92, 30, 30, (230, 160, 60))
+    oval(cx, hy + 15, 112, 112, (240, 175, 70))
+    oval(cx, hy + 70, 70, 50, (250, 220, 170), outline=None)  # muzzle
+    # furious eyebrows + eyes
+    for side in (-1, 1):
+        ex = cx + side * 45
+        if blink:
+            _line(d, [(ex - 20, hy - 5), (ex + 20, hy - 5)], line, 6)
+        else:
+            oval(ex, hy - 5, 20, 16, (255, 255, 255))
+            oval(ex - side * 3, hy - 2, 9, 9, (20, 15, 10), outline=None)
+        _line(d, [(ex + side * 34, hy - 52), (ex - side * 24, hy - 22)], (90, 40, 15), 13)  # inner end down = angry
+    # anger vein
+    vx, vy = cx + 70, hy - 70
+    for dx, dy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+        _line(d, [(vx + dx * 6, vy + dy * 6), (vx + dx * 18, vy + dy * 6), (vx + dx * 18, vy + dy * 18)],
+              (220, 30, 40), 6)
+    # nose + shouting mouth
+    _poly(d, [(cx - 22, hy + 40), (cx + 22, hy + 40), (cx, hy + 62)], (110, 50, 40))
+    gap = (6, 22, 36)[mouth]
+    d.chord([(cx - 50) * S, (hy + 64) * S, (cx + 50) * S, (hy + 72 + gap * 1.5) * S], 0, 180,
+            fill=(120, 20, 25), outline=line, width=4 * S)
+    if mouth:
+        for tx in (cx - 30, cx + 18):  # fangs
+            _poly(d, [(tx, hy + 70), (tx + 12, hy + 70), (tx + 6, hy + 70 + 10 + gap / 4)], (255, 255, 255))
+        oval(cx, hy + 76 + gap * 0.9, 22, 6 + gap / 6, (230, 90, 100), outline=None)
+    img = img.resize((w, h), Image.LANCZOS)
+    shadow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    shadow.putalpha(img.getchannel("A").point(lambda a: a * 0.35).filter(ImageFilter.GaussianBlur(10)))
+    out = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    out.alpha_composite(shadow, (6, 6))
+    out.alpha_composite(img)
+    return out
+
+
+CHARACTERS = {"anchor": draw_anchor, "parrot": draw_parrot, "lion": draw_lion}
 
 
 def sprites(w=420, h=520, character="anchor"):
