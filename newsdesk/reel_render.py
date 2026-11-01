@@ -16,7 +16,7 @@ from .text import Font, wrap
 from .tts import Speaker, read_wav
 
 W, H, FPS = 1080, 1920, 25
-TAG_COLORS = {"news": ACCENT, "mystery": (124, 77, 255), "supernatural": (230, 126, 34), "cricket": (30, 150, 80)}
+TAG_COLORS = {"news": ACCENT, "mystery": (124, 77, 255), "supernatural": (230, 126, 34), "cricket": (30, 150, 80), "celeb": (214, 51, 132)}
 
 
 def caption_chunks(text, max_words=4):

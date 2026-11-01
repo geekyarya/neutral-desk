@@ -285,7 +285,8 @@ def make_supernatural(cfg, used_urls, out_dir=None):
     res.update(music="suspense", meme_line="", tragedy=False)
     e = entries[idx]
     source = (e.get("source") or {}).get("title") or e.title.rsplit(" - ", 1)[-1]
-    res.update(type="supernatural", urls=[e.link], sources=[source], image=None, credit=None, chip=None,
+    res.update(type="supernatural", urls=[e.link], sources=[source],
+               source_items=[{"outlet": source, "title": e.title, "url": e.link}], image=None, credit=None, chip=None,
                media=_media_for(res, out_dir, "strange") if out_dir else [])
     return res
 
@@ -295,6 +296,7 @@ def make_reel_content(cfg, slot_no, out_dir, used_urls):
     makers = {"news": lambda: make_news(cfg, used_urls, out_dir),
               "mystery": lambda: make_mystery(cfg, out_dir, slot_no),
               "supernatural": lambda: make_supernatural(cfg, used_urls, out_dir),
+              "celeb": lambda: __import__("newsdesk.cricket", fromlist=["x"]).celeb_news(cfg, used_urls, out_dir),
               "cricket": lambda: __import__("newsdesk.cricket", fromlist=["x"]).make_cricket(cfg, used_urls, out_dir)}
     content = makers[kind]()
     if content is None and kind != "mystery":  # nothing suitable -> a mystery instead
@@ -317,7 +319,7 @@ def caption_text(content, cfg):
         credits = [m["credit"] for m in content.get("media") or [] if m.get("credit")]
         if credits:
             lines.append("Photos/video: " + "; ".join(credits[:4]))
-    lines += ["", t["reel_disclosure_plain"] if content["type"] in ("news", "cricket") else t["reel_disclosure"], "", " ".join(cfg["reels"]["hashtags"][content["type"]])]
+    lines += ["", t["reel_disclosure_plain"] if content["type"] in ("news", "cricket", "celeb") else t["reel_disclosure"], "", " ".join(cfg["reels"]["hashtags"][content["type"]])]
     return "\n".join(lines)[:2100]
 
 

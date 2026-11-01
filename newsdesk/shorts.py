@@ -46,7 +46,7 @@ def _base(cfg, seg):
     f["small"].draw(d, (60, 152), label, AMBER)
 
     y = 230
-    chip = t["reported_by"].format(n=seg["n_outlets"])
+    chip = seg.get("chip") or t["reported_by"].format(n=seg["n_outlets"])
     cw = f["chip"].length(d, chip)
     d.rounded_rectangle([44, y, 44 + cw + 76, y + 56], radius=28, fill=(22, 72, 84), outline=GREEN, width=3)
     d.line([(66, y + 30), (76, y + 40), (94, y + 18)], fill=WHITE, width=5, joint="curve")
@@ -135,7 +135,9 @@ def render_short(seg, cfg, speaker, out_dir):
 def render_shorts(episode, cfg, out_dir):
     count = cfg.get("shorts", {}).get("count", 5)
     speaker = Speaker(cfg)
-    stories = [s for s in episode["segments"] if s["kind"] == "story"][:count]
+    stories = [s for s in episode["segments"] if s["kind"] == "story"]
+    celeb = [s for s in stories if s.get("extra") == "celeb"][:1]   # one Short is always the celeb news
+    stories = ([s for s in stories if s not in celeb][:count - len(celeb)] + celeb) if celeb else stories[:count]
     for seg in stories:
         seg["short"] = render_short(seg, cfg, speaker, out_dir)
     return episode

@@ -123,7 +123,9 @@ feeds:
 # Vertical Shorts, one per story (uploaded after the main bulletin).
 # YouTube allows only 6 free API uploads a day: 1 bulletin + 2 news Shorts + 3 mystery Shorts (reels with youtube: true)
 shorts:
-  count: 2
+  count: 2             # 1 top story + 1 celeb news (when the bulletin has one)
+
+bulletin_extras: [cricket, celeb, supernatural]   # rapid-round segments added after the cross-checked stories
 
 # Sunday "week in review" (made from the week's daily scripts, no AI calls)
 weekly:
@@ -141,7 +143,7 @@ reels:
     - {hour: 15, type: mystery, youtube: true}      # youtube: true = also posted as a YouTube Short
     - {hour: 18, type: supernatural}
     - {hour: 20, type: mystery, youtube: true}
-    - {hour: 22, type: mystery}
+    - {hour: 22, type: celeb}
     - {hour: 10, type: mystery, youtube: true}      # 10:37
     - {hour: 13, type: cricket}                     # 13:37: cricket news one day, player stats face-off the next
   supernatural_query: '(ghost OR haunted OR paranormal OR UFO OR "black magic" OR exorcism OR tantrik OR mysterious OR "unexplained") India when:3d'
@@ -149,7 +151,9 @@ reels:
     news: ["#hindinews", "#news", "#indianews", "#factcheck", "#zeromasala", "#reels"]
     mystery: ["#mystery", "#rahasya", "#unsolvedmysteries", "#history", "#hindi", "#zeromasala", "#reels"]
     cricket: ["#cricket", "#teamindia", "#indiancricket", "#cricketnews", "#hindi", "#zeromasala", "#reels"]
+    celeb: ["#bollywood", "#celebnews", "#entertainment", "#hindi", "#zeromasala", "#reels"]
     supernatural: ["#ajabgajab", "#mystery", "#strangenews", "#hindinews", "#zeromasala", "#reels"]
+  celeb_query: 'Bollywood (film OR trailer OR "box office" OR award OR OTT OR actor OR actress) India when:1d'
   cricket_query: 'cricket (India OR "Team India" OR BCCI OR IPL OR "Test series" OR ODI OR T20) when:2d'
   # player pairs for the stats face-off Reels (English Wikipedia titles; stats come from their infoboxes)
   cricket_pairs: [["Virat Kohli", "Rohit Sharma"], ["Virat Kohli", "Sachin Tendulkar"], ["Jasprit Bumrah", "Mohammed Shami"],

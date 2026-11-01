@@ -37,32 +37,44 @@ Do not invent any number, rank or record that is not in the data. Say the stats 
 
 {style}
 """
-    return news, stats
+    celeb = """You write 20-30 second celebrity news Reels for a fact-first channel called Zero Masala.
+Below are recent headlines about Indian film, TV, music and sports celebrities. Pick the ONE most talked-about
+item about their PUBLIC work or public statements (film or show releases, box office, trailers, awards, public
+appearances, announcements, interviews). Use all items about that same story. Attribute everything to the outlet
+("according to ..."), state only what the items say, never add rumours, quotes or details.
+SKIP (return {{"index": []}}) anything about: deaths, illness or health, affairs, breakups or divorce, children,
+leaked photos or videos, arrests or unproven legal allegations, body-shaming, or gossip without a named outlet.
+Keep it light, playful and respectful; tease the news, never the person's private life.
+""" + COMMON_RULES + extra_keys + """- "index": list of the numbers of the items about the chosen story.
+
+{style}
+
+ITEMS:
+{items}
+"""
+    return news, stats, celeb
 
 
-def cricket_news(cfg, used_urls, out_dir):
-    from .reels import _finish, _lang, _media_for
-    q = cfg["reels"].get("cricket_query", "cricket India when:2d")
+def _google_items(query):
     items = []
     try:
         r = requests.get("https://news.google.com/rss/search", timeout=30,
-                         params={"q": q, "hl": "en-IN", "gl": "IN", "ceid": "IN:en"})
+                         params={"q": query, "hl": "en-IN", "gl": "IN", "ceid": "IN:en"})
         for e in feedparser.parse(r.content).entries[:25]:
             src = (e.get("source") or {}).get("title") or e.title.rsplit(" - ", 1)[-1]
             items.append((e.title.rsplit(" - ", 1)[0], src, e.link))
     except requests.RequestException as e:
-        print(f"   cricket news error: {e}")
-    for name, url in FEEDS:
-        try:
-            for e in feedparser.parse(requests.get(url, headers=UA, timeout=30).content).entries[:10]:
-                items.append((e.title, name, e.link))
-        except requests.RequestException:
-            pass
-    items = [i for i in items if i[2] not in used_urls]
+        print(f"   news search error: {e}")
+    return items
+
+
+def _story_from_items(cfg, items, prompt, kind, out_dir, music="upbeat"):
+    """Ask the LLM to pick and write one story from (title, outlet, url) items; None if nothing suitable."""
+    from .reels import _finish, _lang, _media_for
     if not items:
         return None
     text = "\n".join(f"[{n}] ({src}) {title}" for n, (title, src, _) in enumerate(items))
-    res = complete_json(cfg, _prompts()[0].format(items=text, style=persona(cfg)["style"], **_lang(cfg)))
+    res = complete_json(cfg, prompt.format(items=text, style=persona(cfg)["style"], **_lang(cfg)))
     idx = [i for i in (res.get("index") or []) if isinstance(i, int) and 0 <= i < len(items)]
     if not idx:
         return None
@@ -71,11 +83,28 @@ def cricket_news(cfg, used_urls, out_dir):
         return None
     res.update(_music_and_meme(res))
     if res.get("music") in (None, "", "chill"):
-        res["music"] = "none" if res.get("tragedy") else "upbeat"
+        res["music"] = "none" if res.get("tragedy") else music
     chosen = [items[i] for i in idx]
-    res.update(type="cricket", urls=[c[2] for c in chosen], sources=list(dict.fromkeys(c[1] for c in chosen)),
-               image=None, credit=None, chip=None, media=_media_for(res, out_dir, "cricket"))
+    res.update(type=kind, urls=[c[2] for c in chosen], sources=list(dict.fromkeys(c[1] for c in chosen)),
+               source_items=[{"outlet": c[1], "title": c[0], "url": c[2]} for c in chosen],
+               image=None, credit=None, chip=None, media=_media_for(res, out_dir, kind))
     return res
+
+
+def cricket_news(cfg, used_urls, out_dir):
+    items = _google_items(cfg["reels"].get("cricket_query", "cricket India when:2d"))
+    for name, url in FEEDS:
+        try:
+            for e in feedparser.parse(requests.get(url, headers=UA, timeout=30).content).entries[:10]:
+                items.append((e.title, name, e.link))
+        except requests.RequestException:
+            pass
+    return _story_from_items(cfg, [i for i in items if i[2] not in used_urls], _prompts()[0], "cricket", out_dir)
+
+
+def celeb_news(cfg, used_urls, out_dir):
+    items = _google_items(cfg["reels"].get("celeb_query", "Bollywood celebrity India when:1d"))
+    return _story_from_items(cfg, [i for i in items if i[2] not in used_urls], _prompts()[2], "celeb", out_dir)
 
 
 def _infobox(title):
@@ -152,3 +181,45 @@ def make_cricket(cfg, used_urls, out_dir):
         if content:
             return content
     return None
+
+
+def build_extras(cfg, used_urls=()):
+    """Rapid-round bulletin segments (cricket, celeb, strange news) written like story segments.
+    They are single-pass, attributed reports, not cross-checked facts, and are labelled that way on screen."""
+    from .reels import make_supernatural
+    from .strings import T
+    t, out = T(cfg), []
+    makers = {"cricket": lambda: cricket_news(cfg, set(used_urls), None_dir()),
+              "celeb": lambda: celeb_news(cfg, set(used_urls), None_dir()),
+              "supernatural": lambda: make_supernatural(cfg, set(used_urls), None_dir())}
+    for kind in cfg.get("bulletin_extras") or []:
+        print(f"Extras: {kind}")
+        try:
+            c = makers[kind]()
+        except Exception as e:  # an extra must never kill the bulletin
+            print(f"   skipped: {e}")
+            continue
+        if not c:
+            print("   nothing suitable today")
+            continue
+        items = c.get("source_items") or [{"outlet": o, "title": c["title"], "url": u}
+                                          for o, u in zip(c["sources"], c["urls"])]
+        out.append({"id": f"extra-{kind}", "kind": "story", "section": "extra", "extra": kind,
+                    "headline": c["title"], "script": c["script"], "short_script": c["script"],
+                    "public_reaction": "", "why_it_matters": "", "mood": "neutral",
+                    "music": c.get("music") or "upbeat", "meme_line": c.get("meme_line", ""),
+                    "meme_at": c.get("meme_at", 0.5), "tragedy": bool(c.get("tragedy")),
+                    "angry": bool(c.get("angry")) and not c.get("tragedy"),
+                    "image_queries": c.get("image_queries") or [], "visuals": c.get("visuals") or [],
+                    "confirmed_facts": [], "disputed": [], "n_outlets": len(items), "countries": ["India"],
+                    "foreign": False,
+                    "chip": t["extra_chip"].format(tag=t["extra_tags"][kind], n=len(items)),
+                    "sources": [{"outlet": i["outlet"], "owner": i["outlet"], "country": "India",
+                                 "title": i["title"], "url": i["url"]} for i in items]})
+    return out
+
+
+def None_dir():
+    import tempfile
+    from pathlib import Path
+    return Path(tempfile.mkdtemp())

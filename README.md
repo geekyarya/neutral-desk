@@ -119,6 +119,10 @@ Slots marked `youtube: true` in `config.yaml` also go to YouTube as Shorts. YouT
 
 The 13:37 `cricket` slot alternates daily between current India cricket news (Google News + ESPNcricinfo headlines) and a player stats face-off (numbers from Wikipedia cricketer infoboxes, pairs under `reels.cricket_pairs`).
 
+The 22:07 `celeb` slot posts public-work celebrity news only (releases, awards, announcements; no rumours, health, relationships or legal accusations).
+
+The daily bulletin also gets rapid-round segments (`bulletin_extras`: cricket, celeb, strange news). They are attributed single-pass reports, labelled "per N source(s)" on screen, not cross-checked facts. One of the daily Shorts is always the celeb segment.
+
 If no suitable item exists, the slot posts a mystery instead. Instagram needs a public video URL, so each Reel is hosted as a GitHub release file, and releases older than 3 days are deleted automatically.
 
 **Setup (one time):**

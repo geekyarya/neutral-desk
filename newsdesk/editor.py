@@ -314,6 +314,13 @@ def build_episode(candidates, cfg):
                               if out.get("public_reaction") else [],
         })
 
+    if use_llm and cfg.get("bulletin_extras"):
+        from .cricket import build_extras
+        used = {src["url"] for seg in segments for src in seg["sources"]}
+        segments += build_extras(cfg, used)
+        for i, seg in enumerate(segments, 1):
+            seg["id"] = seg["id"] if seg["id"].startswith("extra-") else f"story{i:02d}"
+
     t, name = T(cfg), cfg["channel"].get("spoken_name") or cfg["channel"]["name"]
     n_outlets = len({src["outlet"] for seg in segments for src in seg["sources"]})
     lang, pz = cfg["channel"]["language"], persona(cfg)

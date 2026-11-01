@@ -104,7 +104,7 @@ class Layout:
             self.text(d, (x, y), line, "h1", WHITE)
             y += self.lh("h1")
         y += s(6)
-        chip = t["reported_by"].format(n=seg["n_outlets"])
+        chip = seg.get("chip") or t["reported_by"].format(n=seg["n_outlets"])
         if seg.get("foreign"):
             chip += "  " + t["foreign"]
         cw = self.tlen(d, chip, "label")
