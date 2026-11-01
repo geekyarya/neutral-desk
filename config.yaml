@@ -146,6 +146,8 @@ reels:
     - {hour: 22, type: celeb}
     - {hour: 10, type: mystery, youtube: true}      # 10:37
     - {hour: 13, type: cricket}                     # 13:37: cricket news one day, player stats face-off the next
+    - {hour: 16, type: mystery}                     # 16:07
+    - {hour: 21, type: mystery}                     # 21:07
   supernatural_query: '(ghost OR haunted OR paranormal OR UFO OR "black magic" OR exorcism OR tantrik OR mysterious OR "unexplained") India when:3d'
   hashtags:
     news: ["#hindinews", "#news", "#indianews", "#factcheck", "#zeromasala", "#reels"]

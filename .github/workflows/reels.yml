@@ -1,4 +1,4 @@
-# Instagram (+ Facebook Page) Reels: 8 a day (news / mystery / strange news), one per slot in config.yaml.
+# Instagram (+ Facebook Page) Reels: 10 a day (news / mystery / strange news), one per slot in config.yaml.
 # Each run makes one 20-30 s Reel, hosts the video as a GitHub release file (Instagram needs a public URL),
 # posts it to Instagram, and deletes Reel releases older than 3 days.
 #
@@ -13,10 +13,11 @@ on:
   schedule:
     - cron: "37 3,6,9,12,14,16 * * *"   # 09:07 12:07 15:07 18:07 20:07 22:07 IST
     - cron: "7 5,8 * * *"               # 10:37 13:37 IST
+    - cron: "37 10,15 * * *"            # 16:07 21:07 IST
   workflow_dispatch:
     inputs:
       slot:
-        description: "Slot number from config.yaml (0-7); empty = nearest to now"
+        description: "Slot number from config.yaml (0-9); empty = nearest to now"
         required: false
       publish:
         description: "Post to Instagram"

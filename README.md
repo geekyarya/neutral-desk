@@ -105,9 +105,9 @@ The video uploads as **private**, and you approve it from the YouTube Studio pho
 3. **Ranking:** independent groups + article volume + Google News prominence + matches with today's top Google searches + Reddit buzz.
 4. **What people say:** for each story, the AI reads top threads from balanced communities (`trends.reddit_subs`) and adds 1–2 sentences on the *range* of opinions. These are labelled "opinion, not fact", with no usernames and nothing hateful. On screen they appear in a separate box, and the threads are linked in the description.
 
-## 4c. Instagram + Facebook Reels (8 a day, mostly mystery)
+## 4c. Instagram + Facebook Reels (10 a day, mostly mystery)
 
-The `reels` workflow posts one 20–30 s vertical Reel in each of 8 slots a day (09:07, 10:37, 12:07, 13:37, 15:07, 18:07, 20:07, 22:07 IST): **1 news, 1 strange-news, 1 cricket and 5 mystery** (mystery gets the most reach). The mix is set under `reels.slots` in `config.yaml`:
+The `reels` workflow posts one 20–30 s vertical Reel in each of 10 slots a day (09:07, 10:37, 12:07, 13:37, 15:07, 16:07, 18:07, 20:07, 21:07, 22:07 IST): **1 news, 1 strange-news, 1 cricket, 1 celeb and 6 mystery** (mystery gets the most reach). The mix is set under `reels.slots` in `config.yaml`:
 
 | Type | Content | Rules |
 |---|---|---|
