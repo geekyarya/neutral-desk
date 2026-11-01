@@ -107,7 +107,7 @@ The video uploads as **private**, and you approve it from the YouTube Studio pho
 
 ## 4c. Instagram + Facebook Reels (8 a day, mostly mystery)
 
-The `reels` workflow posts one 20–30 s vertical Reel in each of 8 slots a day (09:07, 10:37, 12:07, 13:37, 15:07, 18:07, 20:07, 22:07 IST): **1 news, 1 strange-news and 6 mystery** (mystery gets the most reach). The mix is set under `reels.slots` in `config.yaml`:
+The `reels` workflow posts one 20–30 s vertical Reel in each of 8 slots a day (09:07, 10:37, 12:07, 13:37, 15:07, 18:07, 20:07, 22:07 IST): **1 news, 1 strange-news, 1 cricket and 5 mystery** (mystery gets the most reach). The mix is set under `reels.slots` in `config.yaml`:
 
 | Type | Content | Rules |
 |---|---|---|
@@ -116,6 +116,8 @@ The `reels` workflow posts one 20–30 s vertical Reel in each of 8 slots a day 
 | `supernatural` | A current strange-claim news report found through Google News search | Always attributed and called unverified; never presented as true; no superstition "remedies" |
 
 Slots marked `youtube: true` in `config.yaml` also go to YouTube as Shorts. YouTube's free API allows only 6 uploads a day, so the budget is 1 bulletin + 2 news Shorts + 3 mystery Shorts. Mystery topics come from ~170 curated topics plus Wikipedia categories (`reels.mystery_categories`), rotate daily without repeating, and the AI skips sensitive ones (deaths of real people, crimes, children, recent incidents).
+
+The 13:37 `cricket` slot alternates daily between current India cricket news (Google News + ESPNcricinfo headlines) and a player stats face-off (numbers from Wikipedia cricketer infoboxes, pairs under `reels.cricket_pairs`).
 
 If no suitable item exists, the slot posts a mystery instead. Instagram needs a public video URL, so each Reel is hosted as a GitHub release file, and releases older than 3 days are deleted automatically.
 

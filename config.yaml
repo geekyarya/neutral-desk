@@ -143,12 +143,20 @@ reels:
     - {hour: 20, type: mystery, youtube: true}
     - {hour: 22, type: mystery}
     - {hour: 10, type: mystery, youtube: true}      # 10:37
-    - {hour: 13, type: mystery}                     # 13:37
+    - {hour: 13, type: cricket}                     # 13:37: cricket news one day, player stats face-off the next
   supernatural_query: '(ghost OR haunted OR paranormal OR UFO OR "black magic" OR exorcism OR tantrik OR mysterious OR "unexplained") India when:3d'
   hashtags:
     news: ["#hindinews", "#news", "#indianews", "#factcheck", "#zeromasala", "#reels"]
     mystery: ["#mystery", "#rahasya", "#unsolvedmysteries", "#history", "#hindi", "#zeromasala", "#reels"]
+    cricket: ["#cricket", "#teamindia", "#indiancricket", "#cricketnews", "#hindi", "#zeromasala", "#reels"]
     supernatural: ["#ajabgajab", "#mystery", "#strangenews", "#hindinews", "#zeromasala", "#reels"]
+  cricket_query: 'cricket (India OR "Team India" OR BCCI OR IPL OR "Test series" OR ODI OR T20) when:2d'
+  # player pairs for the stats face-off Reels (English Wikipedia titles; stats come from their infoboxes)
+  cricket_pairs: [["Virat Kohli", "Rohit Sharma"], ["Virat Kohli", "Sachin Tendulkar"], ["Jasprit Bumrah", "Mohammed Shami"],
+                  ["Rohit Sharma", "Sachin Tendulkar"], ["Virat Kohli", "Babar Azam"], ["Jasprit Bumrah", "Pat Cummins"],
+                  ["Virat Kohli", "Joe Root"], ["Shubman Gill", "Yashasvi Jaiswal"], ["Ravindra Jadeja", "Ravichandran Ashwin"],
+                  ["Sachin Tendulkar", "Ricky Ponting"], ["MS Dhoni", "Rishabh Pant"], ["Hardik Pandya", "Ben Stokes"],
+                  ["Suryakumar Yadav", "Travis Head"], ["Kapil Dev", "Imran Khan"], ["Kuldeep Yadav", "Rashid Khan"]]
   # more mystery topics are pulled from these Wikipedia categories (after the curated lists below)
   mystery_categories: ["Haunted places in India", "Ghost towns in India", "Unexplained phenomena", "Cryptids",
                        "Lost ships", "Undeciphered writing systems", "Archaeological sites in India"]

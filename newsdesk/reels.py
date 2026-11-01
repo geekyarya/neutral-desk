@@ -294,7 +294,8 @@ def make_reel_content(cfg, slot_no, out_dir, used_urls):
     kind = cfg["reels"]["slots"][slot_no]["type"]
     makers = {"news": lambda: make_news(cfg, used_urls, out_dir),
               "mystery": lambda: make_mystery(cfg, out_dir, slot_no),
-              "supernatural": lambda: make_supernatural(cfg, used_urls, out_dir)}
+              "supernatural": lambda: make_supernatural(cfg, used_urls, out_dir),
+              "cricket": lambda: __import__("newsdesk.cricket", fromlist=["x"]).make_cricket(cfg, used_urls, out_dir)}
     content = makers[kind]()
     if content is None and kind != "mystery":  # nothing suitable -> a mystery instead
         print(f"   no suitable {kind} item; making a mystery Reel instead")
@@ -316,7 +317,7 @@ def caption_text(content, cfg):
         credits = [m["credit"] for m in content.get("media") or [] if m.get("credit")]
         if credits:
             lines.append("Photos/video: " + "; ".join(credits[:4]))
-    lines += ["", t["reel_disclosure"], "", " ".join(cfg["reels"]["hashtags"][content["type"]])]
+    lines += ["", t["reel_disclosure_plain"] if content["type"] in ("news", "cricket") else t["reel_disclosure"], "", " ".join(cfg["reels"]["hashtags"][content["type"]])]
     return "\n".join(lines)[:2100]
 
 
