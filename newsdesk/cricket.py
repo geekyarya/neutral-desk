@@ -100,6 +100,8 @@ def _story_from_items(cfg, items, prompt, kind, out_dir, music="upbeat", style=N
     res.update(type=kind, urls=[c[2] for c in chosen], sources=list(dict.fromkeys(c[1] for c in chosen)),
                source_items=[{"outlet": c[1], "title": c[0], "url": c[2]} for c in chosen],
                image=None, credit=None, chip=None, media=_media_for(res, out_dir, kind))
+    if kind == "cricket":
+        res["media"] = _with_photos(res["media"], res.get("visuals") or [], out_dir)
     return res
 
 
@@ -182,7 +184,7 @@ def cricket_stats(cfg, out_dir):
         cards = stats_cards(sa, sb, out_dir)
         res.update(type="cricket", sources=["Wikipedia (player statistics)"], image=None, credit=None, chip=None,
                    urls=["https://en.wikipedia.org/wiki/" + s["name"].replace(" ", "_") for s in (sa, sb)],
-                   media=cards + _media_for(res, out_dir, "cricket"))
+                   media=cards + _with_photos(_media_for(res, out_dir, "cricket"), [sa["name"], sb["name"]], out_dir))
         return res
     return None
 
@@ -299,3 +301,43 @@ def stats_cards(sa, sb, out_dir, max_cards=2):
         img.save(path)
         cards.append({"type": "img", "path": str(path), "credit": None})
     return cards
+
+
+def commons_photos(query, out_dir, prefix, limit=1):
+    """Freely licensed Commons photos found by a file search (e.g. a player's name); credit included."""
+    from pathlib import Path
+
+    from .media import free_image
+    out_dir, found = Path(out_dir), []
+    try:
+        r = requests.get("https://commons.wikimedia.org/w/api.php", headers=UA, timeout=30, params={
+            "action": "query", "format": "json", "list": "search", "srnamespace": 6,
+            "srsearch": f"{query} filetype:bitmap", "srlimit": 8})
+        hits = [h["title"][5:] for h in r.json().get("query", {}).get("search", [])]
+    except (requests.RequestException, ValueError, KeyError) as e:
+        print(f"   (commons search failed for {query}: {e})")
+        return found
+    for i, name in enumerate(hits):
+        if len(found) >= limit:
+            break
+        if not name.lower().endswith((".jpg", ".jpeg", ".png")):
+            continue
+        try:
+            path, credit = free_image(name, out_dir / f"{prefix}-{i}")
+        except (requests.RequestException, ValueError, KeyError):
+            continue
+        if path:
+            found.append({"type": "img", "path": path, "credit": credit})
+    return found
+
+
+def _with_photos(media, names, out_dir, want=3):
+    """Top up cricket visuals with Commons photos of the named players/teams until there are `want` pictures."""
+    have = [m for m in media if m["type"] == "img" and m.get("credit")]
+    for n, name in enumerate(names):
+        if len(have) >= want:
+            break
+        got = commons_photos(f"{name} cricket", out_dir, f"cp{n}")
+        media, have = media + got, have + got
+    print(f"   cricket visuals: {len(media)} items")
+    return media
