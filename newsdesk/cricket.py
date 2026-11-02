@@ -312,11 +312,12 @@ def commons_photos(query, out_dir, prefix, limit=1):
     try:
         r = requests.get("https://commons.wikimedia.org/w/api.php", headers=UA, timeout=30, params={
             "action": "query", "format": "json", "list": "search", "srnamespace": 6,
-            "srsearch": f"{query} filetype:bitmap", "srlimit": 8})
+            "srsearch": query, "srlimit": 20})
         hits = [h["title"][5:] for h in r.json().get("query", {}).get("search", [])]
     except (requests.RequestException, ValueError, KeyError) as e:
         print(f"   (commons search failed for {query}: {e})")
         return found
+    print(f"   commons search '{query}': {len(hits)} files")
     for i, name in enumerate(hits):
         if len(found) >= limit:
             break
@@ -337,7 +338,7 @@ def _with_photos(media, names, out_dir, want=3):
     for n, name in enumerate(names):
         if len(have) >= want:
             break
-        got = commons_photos(f"{name} cricket", out_dir, f"cp{n}")
+        got = commons_photos(name, out_dir, f"cp{n}") or commons_photos(f"{name} cricket", out_dir, f"cq{n}")
         media, have = media + got, have + got
     print(f"   cricket visuals: {len(media)} items")
     return media
