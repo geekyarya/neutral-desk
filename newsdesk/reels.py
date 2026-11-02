@@ -297,8 +297,12 @@ def make_reel_content(cfg, slot_no, out_dir, used_urls):
               "mystery": lambda: make_mystery(cfg, out_dir, slot_no),
               "supernatural": lambda: make_supernatural(cfg, used_urls, out_dir),
               "celeb": lambda: __import__("newsdesk.cricket", fromlist=["x"]).celeb_news(cfg, used_urls, out_dir),
+              "cricket_news": lambda: __import__("newsdesk.cricket", fromlist=["x"]).cricket_news(cfg, used_urls, out_dir),
+              "cricket_stats": lambda: __import__("newsdesk.cricket", fromlist=["x"]).cricket_stats(cfg, out_dir),
               "cricket": lambda: __import__("newsdesk.cricket", fromlist=["x"]).make_cricket(cfg, used_urls, out_dir)}
     content = makers[kind]()
+    if content is None and kind.startswith("cricket"):  # the other cricket kind before giving up
+        content = makers["cricket"]()
     if content is None and kind != "mystery":  # nothing suitable -> a mystery instead
         print(f"   no suitable {kind} item; making a mystery Reel instead")
         content = make_mystery(cfg, out_dir, slot_no)

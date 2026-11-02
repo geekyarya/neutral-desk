@@ -139,13 +139,13 @@ reels:
   words: "45 to 60"           # ~20-30 s of Hindi speech at the configured speed
   slots:
     - {hour: 9,  type: news}
-    - {hour: 12, type: mystery}
+    - {hour: 12, type: cricket_news}                # 12:07 trending cricket news (already has a cron-job.org job)
     - {hour: 15, type: mystery, youtube: true}      # youtube: true = also posted as a YouTube Short
     - {hour: 18, type: supernatural}
     - {hour: 20, type: mystery, youtube: true}
     - {hour: 22, type: celeb}
     - {hour: 10, type: mystery, youtube: true}      # 10:37
-    - {hour: 13, type: cricket}                     # 13:37: cricket news one day, player stats face-off the next
+    - {hour: 13, type: cricket_stats}                 # 13:37 player stats face-off
     - {hour: 16, type: mystery}                     # 16:07
     - {hour: 21, type: mystery}                     # 21:07
   supernatural_query: '(ghost OR haunted OR paranormal OR UFO OR "black magic" OR exorcism OR tantrik OR mysterious OR "unexplained") India when:3d'
