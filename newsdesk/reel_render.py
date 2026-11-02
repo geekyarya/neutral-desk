@@ -57,10 +57,6 @@ def _overlay(cfg, content, f):
     d = ImageDraw.Draw(img)
     d.rectangle([44, 70, 84, 110], fill=ACCENT)
     f["brand"].draw(d, (100, 62), cfg["channel"]["name"].upper(), WHITE, 3, (0, 0, 0))
-    label = t["ai_label"]
-    lw = f["small"].length(d, label)
-    d.rounded_rectangle([W - lw - 76, 70, W - 44, 114], radius=10, fill=(0, 0, 0, 140), outline=AMBER, width=3)
-    f["small"].draw(d, (W - lw - 60, 76), label, AMBER)
 
     tag = t["reel_tags"][content["type"]]
     tw = f["tag"].length(d, tag)

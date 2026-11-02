@@ -26,11 +26,9 @@ PERSONAS = {
         },
         "outro": {
             "hi": "तो दोस्तों, आज के लिए बस इतना ही! याद रखिए, {name} पर कोई बात तथ्य तभी है, जब कम से कम {k} "
-                  "स्वतंत्र मीडिया समूह उसकी पुष्टि करें। सारे स्रोत डिस्क्रिप्शन में हैं। मिट्ठू भाई और उसकी आवाज़ एआई "
-                  "से बने हैं। कल फिर मिलेंगे, टाटा, बाय बाय!",
+                  "स्वतंत्र मीडिया समूह उसकी पुष्टि करें। सारे स्रोत डिस्क्रिप्शन में हैं। कल फिर मिलेंगे, टाटा, बाय बाय!",
             "en": "That's all for today, friends! On {name}, a fact counts only when at least {k} independent "
-                  "media groups confirm it. All sources are in the description. Mitthu Bhai and his voice are AI "
-                  "generated. See you tomorrow, bye bye!",
+                  "media groups confirm it. All sources are in the description. See you tomorrow, bye bye!",
         },
     },
     "babbar": {
@@ -98,10 +96,10 @@ PERSONAS = {
         },
         "outro": {
             "hi": "बस दोस्तों, आज के लिए इतना ही! याद रखिए, यहां कोई बात तथ्य तभी है, जब कम से कम {k} स्वतंत्र मीडिया "
-                  "समूह उसकी पुष्टि करें। बब्बर भाई और उसकी आवाज़ एआई से बने हैं। "
+                  "समूह उसकी पुष्टि करें। "
                   "कल फिर मिलेंगे, तब तक टच ग्रास!",
             "en": "That's all for today, friends! Here a fact counts only when at least {k} independent media groups "
-                  "confirm it. Babbar Bhai and his voice are AI generated. See "
+                  "confirm it. See "
                   "you tomorrow, until then touch grass!",
         },
     },

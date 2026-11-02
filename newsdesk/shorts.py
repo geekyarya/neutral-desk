@@ -40,11 +40,6 @@ def _base(cfg, seg):
     date = date_text(cfg)
     f["small"].draw(d, (W - 44 - f["small"].length(d, date), 42), date, MUTED)
 
-    label = t["ai_label"]
-    lw = f["small"].length(d, label)
-    d.rounded_rectangle([44, 146, 44 + lw + 32, 194], radius=10, outline=AMBER, width=3)
-    f["small"].draw(d, (60, 152), label, AMBER)
-
     y = 230
     chip = seg.get("chip") or t["reported_by"].format(n=seg["n_outlets"])
     cw = f["chip"].length(d, chip)

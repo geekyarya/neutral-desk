@@ -323,7 +323,8 @@ def caption_text(content, cfg):
         credits = [m["credit"] for m in content.get("media") or [] if m.get("credit")]
         if credits:
             lines.append("Photos/video: " + "; ".join(credits[:4]))
-    lines += ["", t["reel_disclosure_plain"] if content["type"] in ("news", "cricket", "celeb") else t["reel_disclosure"], "", " ".join(cfg["reels"]["hashtags"][content["type"]])]
+    note = t["reel_disclosure_plain"] if content["type"] in ("news", "cricket", "celeb") else t["reel_disclosure"]
+    lines += [""] + ([note, ""] if note else []) + [" ".join(cfg["reels"]["hashtags"][content["type"]])]
     return "\n".join(lines)[:2100]
 
 

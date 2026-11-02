@@ -11,6 +11,13 @@ WIKI = "https://en.wikipedia.org/w/api.php"
 UA = {"User-Agent": "ZeroMasalaBot/1.0 (https://geekyarya.github.io/neutral-desk/)"}
 FEEDS = [("ESPNcricinfo", "https://www.espncricinfo.com/rss/content/story/feeds/0.xml")]
 FORMATS = ("Test", "ODI", "T20I")
+CRICKET_STYLE = (
+    "Voice: an energetic, funny cricket-fan commentator talking to Gen Z friends. NOT a news-channel anchor: never "
+    "open with 'breaking', never say 'janta jawab maang rahi hai', never use outrage, debate-show shouting, "
+    "slogans or 'sources say' drama. Start straight with the actual cricket news or the hook question. Light "
+    "Hinglish fan slang is fine (e.g. 'क्या खेला भाई!', 'मैच पलट दिया!'). No anger, no taunting; praise and "
+    "banter only. Never mock players, never run a player down.")
+CRICKET_QUERIES = ["cricket match stadium", "India cricket team"]
 
 
 def _prompts():
@@ -24,6 +31,7 @@ prediction. If nothing is about cricket involving India, return {{"index": []}}.
 """ + COMMON_RULES + extra_keys + """- "index": list of the numbers of the items about the chosen story.
 
 {style}
+- "image_queries" for cricket: 2-3 short English phrases for photos, always including "cricket" plus the match, series, stadium or player name.
 
 ITEMS:
 {items}
@@ -48,6 +56,7 @@ Keep it light, playful and respectful; tease the news, never the person's privat
 """ + COMMON_RULES + extra_keys + """- "index": list of the numbers of the items about the chosen story.
 
 {style}
+- "image_queries" for cricket: 2-3 short English phrases for photos, always including "cricket" plus the match, series, stadium or player name.
 
 ITEMS:
 {items}
@@ -68,13 +77,13 @@ def _google_items(query):
     return items
 
 
-def _story_from_items(cfg, items, prompt, kind, out_dir, music="upbeat"):
+def _story_from_items(cfg, items, prompt, kind, out_dir, music="upbeat", style=None):
     """Ask the LLM to pick and write one story from (title, outlet, url) items; None if nothing suitable."""
     from .reels import _finish, _lang, _media_for
     if not items:
         return None
     text = "\n".join(f"[{n}] ({src}) {title}" for n, (title, src, _) in enumerate(items))
-    res = complete_json(cfg, prompt.format(items=text, style=persona(cfg)["style"], **_lang(cfg)))
+    res = complete_json(cfg, prompt.format(items=text, style=style or persona(cfg)["style"], **_lang(cfg)))
     idx = [i for i in (res.get("index") or []) if isinstance(i, int) and 0 <= i < len(items)]
     if not idx:
         return None
@@ -82,6 +91,9 @@ def _story_from_items(cfg, items, prompt, kind, out_dir, music="upbeat"):
     if not res["script"]:
         return None
     res.update(_music_and_meme(res))
+    if kind == "cricket":
+        res["angry"] = False
+        res["image_queries"] = (res.get("image_queries") or [])[:3] + CRICKET_QUERIES
     if res.get("music") in (None, "", "chill"):
         res["music"] = "none" if res.get("tragedy") else music
     chosen = [items[i] for i in idx]
@@ -99,7 +111,7 @@ def cricket_news(cfg, used_urls, out_dir):
                 items.append((e.title, name, e.link))
         except requests.RequestException:
             pass
-    return _story_from_items(cfg, [i for i in items if i[2] not in used_urls], _prompts()[0], "cricket", out_dir)
+    return _story_from_items(cfg, [i for i in items if i[2] not in used_urls], _prompts()[0], "cricket", out_dir, style=CRICKET_STYLE)
 
 
 def celeb_news(cfg, used_urls, out_dir):
@@ -120,7 +132,7 @@ def player_stats(title):
     """{'name', 'date', 'lines': [...]} from the cricketer infobox, or None."""
     text, name = _infobox(title)
     f = {k.strip(): v.strip() for k, v in re.findall(r"^\|\s*([^=|]+?)\s*=\s*(.*)$", text, re.M)}
-    lines = []
+    lines, rows = [], {}
     for i in (1, 2, 3, 4):
         fmt = re.sub(r"\[\[(?:[^|\]]*\|)?([^\]]*)\]\]", r"\1", f.get(f"column{i}", ""))
         if fmt not in FORMATS or not f.get(f"matches{i}"):
@@ -133,10 +145,13 @@ def player_stats(title):
             parts.append(f"{f[f'wickets{i}']} wickets, bowling average {f.get(f'bowl avg{i}', '-')}, "
                          f"best {f.get(f'best bowling{i}', '-')}")
         lines.append("; ".join(parts))
+        rows[fmt] = {"Matches": f[f"matches{i}"], "Runs": f.get(f"runs{i}"), "Average": f.get(f"bat avg{i}"),
+                     "100s / 50s": f.get(f"100s/50s{i}"), "Wickets": f.get(f"wickets{i}"),
+                     "Bowling avg": f.get(f"bowl avg{i}")}
     if not lines:
         return None
     date = re.sub(r"\{\{[^}]*\}\}|<[^>]+>", "", f.get("date", "")).strip() or "recently"
-    return {"name": name, "date": date, "lines": lines}
+    return {"name": name, "date": date, "lines": lines, "rows": rows}
 
 
 def cricket_stats(cfg, out_dir):
@@ -156,16 +171,18 @@ def cricket_stats(cfg, out_dir):
             continue
         data = "\n".join(f"{s['name']}:\n  " + "\n  ".join(s["lines"]) for s in (sa, sb))
         res = complete_json(cfg, _prompts()[1].format(a=sa["name"], b=sb["name"], date=sa["date"], data=data,
-                                                     style=persona(cfg)["style"], **_lang(cfg)))
+                                                     style=CRICKET_STYLE, **_lang(cfg)))
         res = _finish(res, cfg)
         if not res["script"]:
             continue
         res.update(_music_and_meme(res))
         res.update(music="upbeat", tragedy=False, angry=False)
         res["visuals"] = [sa["name"], sb["name"]]
+        res["image_queries"] = (res.get("image_queries") or [])[:2] + CRICKET_QUERIES
+        cards = stats_cards(sa, sb, out_dir)
         res.update(type="cricket", sources=["Wikipedia (player statistics)"], image=None, credit=None, chip=None,
                    urls=["https://en.wikipedia.org/wiki/" + s["name"].replace(" ", "_") for s in (sa, sb)],
-                   media=_media_for(res, out_dir, "cricket"))
+                   media=cards + _media_for(res, out_dir, "cricket"))
         return res
     return None
 
@@ -223,3 +240,62 @@ def None_dir():
     import tempfile
     from pathlib import Path
     return Path(tempfile.mkdtemp())
+
+
+def _num(v):
+    try:
+        return float(re.sub(r"[^0-9.]", "", str(v).split("/")[0]))
+    except ValueError:
+        return None
+
+
+def stats_cards(sa, sb, out_dir, max_cards=2):
+    """Head-to-head stat cards (PIL images) for formats both players have; the better number is highlighted."""
+    from pathlib import Path
+
+    from PIL import Image, ImageDraw
+
+    from .text import Font
+    W, H = 1080, 1920
+    big, mid, small = Font(64, True), Font(46, True), Font(34, True)
+    cards = []
+    for fmt in FORMATS:
+        ra, rb = sa["rows"].get(fmt), sb["rows"].get(fmt)
+        if not ra or not rb or len(cards) >= max_cards:
+            continue
+        keys = ["Matches"]
+        if ra.get("Runs") and rb.get("Runs"):
+            keys += ["Runs", "Average", "100s / 50s"]
+        if all((_num(r.get("Wickets")) or 0) >= 20 for r in (ra, rb)):
+            keys += ["Wickets", "Bowling avg"]
+        if len(keys) < 3:
+            continue
+        if "Wickets" in keys and len(keys) > 4:
+            keys = ["Matches", "Runs", "Wickets", "Bowling avg"]
+        keys = keys[:4]
+        img = Image.new("RGB", (W, H), (10, 18, 40))
+        d = ImageDraw.Draw(img)
+        y0 = 590
+        d.rounded_rectangle([40, y0 - 20, W - 40, y0 + 130 + 82 * len(keys) + 10], radius=30, fill=(18, 28, 56),
+                            outline=(30, 150, 80), width=4)
+        x1, x2 = 250, 830
+        for x, st in ((x1, sa), (x2, sb)):
+            last = st["name"].split()[-1].upper()
+            big.draw(d, (x - big.length(d, last) / 2, y0), last, (255, 255, 255))
+        small.draw(d, ((W - small.length(d, fmt)) / 2, y0 + 12), fmt, (130, 210, 160))
+        y = y0 + 125
+        for k in keys:
+            va, vb = ra.get(k) or "-", rb.get(k) or "-"
+            na, nb = _num(va), _num(vb)
+            better = None
+            if na is not None and nb is not None and na != nb and k not in ("Matches", "100s / 50s"):
+                better = (na > nb) != (k == "Bowling avg")
+            for x, v, win in ((x1, va, better is True), (x2, vb, better is False)):
+                mid.draw(d, (x - mid.length(d, v) / 2, y), v, (255, 214, 64) if win else (235, 235, 235))
+            lab = Font(28, True)
+            lab.draw(d, ((W - lab.length(d, k)) / 2, y + 10), k, (150, 165, 200))
+            y += 82
+        path = Path(out_dir) / f"statcard-{len(cards)}.png"
+        img.save(path)
+        cards.append({"type": "img", "path": str(path), "credit": None})
+    return cards

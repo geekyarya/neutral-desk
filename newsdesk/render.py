@@ -67,12 +67,6 @@ class Layout:
         self.text(d, (s(64), s(11)), name, "brand", WHITE)
         bx = s(64) + self.tlen(d, name, "brand") + s(20)
         self.text(d, (bx, s(17)), "|  " + date_text(self.cfg), "small", MUTED)
-        # permanent AI disclosure (YouTube policy + India IT rules)
-        label = self.t["ai_label"]
-        lw = self.tlen(d, label, "small")
-        d.rounded_rectangle([self.W - lw - s(48), s(12), self.W - s(24), s(44)], radius=s(6),
-                            outline=AMBER, width=2)
-        self.text(d, (self.W - lw - s(36), s(16)), label, "small", AMBER)
         return img
 
     def desk(self, img):

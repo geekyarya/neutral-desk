@@ -34,7 +34,7 @@ STRINGS = {
                  "{n_outlets} news outlets.",
         "outro": "That's the news for today. On {name}, something is reported as fact only when at least {k} "
                  "independent media groups confirm it. Everything else is attributed to its source. All links "
-                 "are in the description. Our anchor and voice are AI generated. See you tomorrow.",
+                 "are in the description. See you tomorrow.",
         "title": "{headline} | News {date}",
         "title_short": "News {date} | {name}",
         "desc_checked": "Today's stories were cross-checked across {n} outlets.",
@@ -67,12 +67,11 @@ STRINGS = {
         "desc_reactions": "Public reaction (opinions)",
         "reel_tags": {"news": "NEWS", "mystery": "MYSTERY", "supernatural": "STRANGE NEWS", "cricket": "CRICKET", "celeb": "CELEB NEWS"},
         "reel_outro": "Follow {name} for more.",
-        "reel_disclosure_plain": "Anchor, voice and script are AI-generated from the sources above.",
+        "reel_disclosure_plain": "",
         "extra_tags": {"cricket": "Cricket", "celeb": "Celeb news", "supernatural": "Strange news"},
         "extra_chip": "{tag}: per {n} source(s)",
         "reel_source": "Source",
-        "reel_disclosure": "Anchor, voice and script are AI-generated from the sources above. Claims about the "
-                           "supernatural are reported, not endorsed.",
+        "reel_disclosure": "Claims about the supernatural are reported, not endorsed.",
     },
     "hi": {
         "llm_language": (
@@ -103,7 +102,7 @@ STRINGS = {
                  "{n_outlets} मीडिया संस्थानों की रिपोर्टों से मिलाकर जांचा गया है।",
         "outro": "आज के लिए बस इतना ही। {name} पर कोई बात तथ्य के रूप में तभी बताई जाती है, जब कम से कम {k} "
                  "स्वतंत्र मीडिया समूह उसकी पुष्टि करें। बाकी दावों के साथ उनका स्रोत बताया जाता है। सभी स्रोतों "
-                 "के लिंक डिस्क्रिप्शन में हैं। हमारे एंकर और आवाज़ एआई से बनाए गए हैं। कल फिर मिलेंगे, नमस्कार।",
+                 "के लिंक डिस्क्रिप्शन में हैं। कल फिर मिलेंगे, नमस्कार।",
         "title": "{headline} | आज की खबरें {date}",
         "title_short": "आज की खबरें {date} | {name}",
         "desc_checked": "आज की खबरें {n} मीडिया संस्थानों की रिपोर्टों से मिलाकर जांची गई हैं।",
@@ -135,11 +134,11 @@ STRINGS = {
         "desc_reactions": "लोगों की राय (राय, तथ्य नहीं)",
         "reel_tags": {"news": "खबर", "mystery": "रहस्य", "supernatural": "अजब-गजब खबर", "cricket": "क्रिकेट", "celeb": "सेलेब खबर"},
         "reel_outro": "ऐसी और कहानियों के लिए फॉलो करें {name}।",
-        "reel_disclosure_plain": "एंकर, आवाज़ और स्क्रिप्ट ऊपर दिए स्रोतों से AI द्वारा बनाए गए हैं।",
+        "reel_disclosure_plain": "",
         "extra_tags": {"cricket": "क्रिकेट", "celeb": "सेलेब खबर", "supernatural": "अजब-गजब"},
         "extra_chip": "{tag}: {n} स्रोत के हवाले से",
         "reel_source": "स्रोत",
-        "reel_disclosure": "एंकर, आवाज़ और स्क्रिप्ट ऊपर दिए स्रोतों से AI द्वारा बनाए गए हैं। अलौकिक दावे सिर्फ रिपोर्ट किए गए "
+        "reel_disclosure": "अलौकिक दावे सिर्फ रिपोर्ट किए गए "
                            "हैं, हम उनकी पुष्टि नहीं करते।",
     },
 }
