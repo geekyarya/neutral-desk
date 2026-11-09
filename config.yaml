@@ -129,7 +129,7 @@ shorts:
 daily_formats: [news, business, news, scam, horror, news, news]
 
 special:
-  words: "110 to 130"          # per chapter (6-7 chapters, about 5-6 minutes in all)
+  words: "180 to 210"          # per chapter (6-7 chapters, about 5-6 minutes in all)
   business_topics: ["Nokia", "Kodak", "Blockbuster LLC", "Air India", "Jet Airways", "Kingfisher Airlines",
                     "Tata Nano", "Amul", "Parle-G", "Maruti Suzuki", "Flipkart", "Paytm", "Ola Cabs", "Zomato",
                     "Reliance Jio", "Cafe Coffee Day", "Netflix", "BlackBerry Limited", "Tesla, Inc.", "Uber",
