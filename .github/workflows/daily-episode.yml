@@ -25,7 +25,7 @@ on:
         description: "Skip if today's episode already exists (for timed triggers)"
         type: boolean
         default: false
-      format:
+      video_type:
         description: "Today's video type (auto = by weekday, set in config.yaml)"
         type: choice
         options: [auto, news, business, scam, horror]
@@ -105,7 +105,7 @@ jobs:
       - name: Make bulletin + Shorts
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          EPISODE_FORMAT: ${{ inputs.format != 'auto' && inputs.format || '' }}
+          EPISODE_FORMAT: ${{ inputs.video_type != 'auto' && inputs.video_type || '' }}
         run: |
           python run.py all
           echo "EPISODE_DATE=$(ls output | sort | tail -1)" >> "$GITHUB_ENV"
