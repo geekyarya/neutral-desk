@@ -254,6 +254,19 @@ def render_special(ep, cfg, out_dir):
             w.setframerate(sr)
             w.writeframes(data.tobytes())
 
+    plain = Image.new("RGB", (int(W * 1.12), int(H * 1.12)), (14, 26, 52))
+
+    def title_card(text):
+        img = plain.copy()
+        d = ImageDraw.Draw(img)
+        big = Font(s(64), True)
+        lines = wrap(d, text, big, img.width - s(240), 3)
+        y = (img.height - len(lines) * s(84)) // 2 - s(60)
+        for line in lines:
+            big.draw(d, ((img.width - big.length(d, line)) / 2, y), line, WHITE, 4, (0, 0, 0))
+            y += s(84)
+        return img
+
     # visuals per segment: list of (image) already cropped for Ken Burns
     visual = {}
     for k, sg in enumerate(segs):
@@ -272,19 +285,6 @@ def render_special(ep, cfg, out_dir):
         elif not imgs:  # no free photo found: a clean title card with the chapter name
             imgs = [(title_card(sg["headline"]), None)]
         visual[k] = imgs
-    plain = Image.new("RGB", (int(W * 1.12), int(H * 1.12)), (14, 26, 52))
-
-    def title_card(text):
-        img = plain.copy()
-        d = ImageDraw.Draw(img)
-        big = Font(s(64), True)
-        lines = wrap(d, text, big, img.width - s(240), 3)
-        y = (img.height - len(lines) * s(84)) // 2 - s(60)
-        for line in lines:
-            big.draw(d, ((img.width - big.length(d, line)) / 2, y), line, WHITE, 4, (0, 0, 0))
-            y += s(84)
-        return img
-
     f = {"brand": Font(s(24), True), "tag": Font(s(20), True), "chap": Font(s(30), True), "cap": Font(s(36), True),
          "small": Font(s(15), True), "credit": Font(s(13), False)}
     vig = _vignette(W, H) if horror else None

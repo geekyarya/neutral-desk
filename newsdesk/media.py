@@ -179,7 +179,7 @@ def commons_video(query, out_dir, prefix, seconds=10):
     return None
 
 
-def add_story_images(episode, out_dir, max_photos=4):
+def add_story_images(episode, out_dir, max_photos=4, videos=True):
     """Pictures (Wikipedia topics + Openverse searches) and, when one exists, a free video clip per story."""
     for seg in episode["segments"]:
         if seg["kind"] != "story" or "images" in seg:
@@ -196,7 +196,7 @@ def add_story_images(episode, out_dir, max_photos=4):
                 break
             imgs += openverse_images(q, folder, f"{seg['id']}-{len(imgs)}")
         video = None
-        for q in (seg.get("image_queries") or [])[:2] + (seg.get("visuals") or [])[:1]:
+        for q in ((seg.get("image_queries") or [])[:2] + (seg.get("visuals") or [])[:1] if videos else []):
             video = commons_video(q, folder, seg["id"])
             if video:
                 break
