@@ -4,6 +4,7 @@ import re
 import feedparser
 import requests
 
+from .media import commons_photos
 from .editor import _music_and_meme, complete_json
 from .persona import persona
 
@@ -156,12 +157,12 @@ def player_stats(title):
     return {"name": name, "date": date, "lines": lines, "rows": rows}
 
 
-def cricket_stats(cfg, out_dir):
+def cricket_stats(cfg, out_dir, offset=0):
     from .reels import _finish, _lang, _media_for, ist_now
     pairs = cfg["reels"].get("cricket_pairs") or []
     if not pairs:
         return None
-    start = ist_now().date().toordinal() % len(pairs)
+    start = (ist_now().date().toordinal() * 2 + offset) % len(pairs)
     for i in range(len(pairs)):
         a, b = pairs[(start + i) % len(pairs)]
         try:
@@ -301,35 +302,6 @@ def stats_cards(sa, sb, out_dir, max_cards=2):
         img.save(path)
         cards.append({"type": "img", "path": str(path), "credit": None})
     return cards
-
-
-def commons_photos(query, out_dir, prefix, limit=1):
-    """Freely licensed Commons photos found by a file search (e.g. a player's name); credit included."""
-    from pathlib import Path
-
-    from .media import free_image
-    out_dir, found = Path(out_dir), []
-    try:
-        r = requests.get("https://commons.wikimedia.org/w/api.php", headers=UA, timeout=30, params={
-            "action": "query", "format": "json", "list": "search", "srnamespace": 6,
-            "srsearch": query, "srlimit": 20})
-        hits = [h["title"][5:] for h in r.json().get("query", {}).get("search", [])]
-    except (requests.RequestException, ValueError, KeyError) as e:
-        print(f"   (commons search failed for {query}: {e})")
-        return found
-    print(f"   commons search '{query}': {len(hits)} files")
-    for i, name in enumerate(hits):
-        if len(found) >= limit:
-            break
-        if not name.lower().endswith((".jpg", ".jpeg", ".png")):
-            continue
-        try:
-            path, credit = free_image(name, out_dir / f"{prefix}-{i}")
-        except (requests.RequestException, ValueError, KeyError):
-            continue
-        if path:
-            found.append({"type": "img", "path": path, "credit": credit})
-    return found
 
 
 def _with_photos(media, names, out_dir, want=3):

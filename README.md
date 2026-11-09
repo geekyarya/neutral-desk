@@ -107,7 +107,7 @@ The video uploads as **private**, and you approve it from the YouTube Studio pho
 
 ## 4c. Instagram + Facebook Reels (10 a day, mostly mystery)
 
-The `reels` workflow posts one 20–30 s vertical Reel in each of 10 slots a day (09:07, 10:37, 12:07, 13:37, 15:07, 16:07, 18:07, 20:07, 21:07, 22:07 IST): **1 news, 1 strange-news, 1 cricket, 1 celeb and 6 mystery** (mystery gets the most reach). The mix is set under `reels.slots` in `config.yaml`:
+The `reels` workflow posts one 20–30 s vertical Reel in each of 10 slots a day, in priority order: **4 cricket (3 news + 1 stats face-off), 2 celeb, 2 mystery, 1 news, 1 strange-news** (mystery gets the most reach). The mix is set under `reels.slots` in `config.yaml`:
 
 | Type | Content | Rules |
 |---|---|---|

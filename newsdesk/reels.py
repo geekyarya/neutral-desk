@@ -39,8 +39,10 @@ extra_keys = """- "angry": true only if the reports describe clear wrongdoing, n
   (mysterious things) or "none" (tragedies).
 - "meme_line": only if tragedy is false: a funny Gen Z meme-style sticker line (max 6 words, exactly as it appears
   as its own sentence in the middle of "script"), e.g. "सीन बन गया भाई!". "" for tragedies.
-- "visuals": 2-3 English Wikipedia article titles that illustrate it (places, institutions, landmarks, public figures).
-- "image_queries": 2-3 short English photo-search phrases for it (places, events, objects; never private people).
+- "visuals": 2-3 English Wikipedia article titles of the SPECIFIC people, teams, films, places or institutions named
+  in the story, exactly as Wikipedia titles them (e.g. "Rohit Sharma", "Wankhede Stadium"). Never generic topics.
+- "image_queries": 2-3 short English photo-search phrases naming the specific subject (e.g. "Wankhede Stadium
+  Mumbai"); never abstract words, never private people.
 """
 
 NEWS_PROMPT = """You write 20-30 second news Reels for a strictly neutral channel. Below are {n} reports of the
@@ -120,11 +122,17 @@ def _finish(res, cfg):
 
 def _media_for(res, out_dir, prefix):
     """News photos (Wikipedia + Openverse) and, if one exists, a free video clip, for a Reel."""
-    from .media import commons_video, openverse_images, topic_images
+    from .media import commons_photos, commons_video, openverse_images, topic_images
     folder = Path(out_dir)
-    imgs = topic_images(res.get("visuals") or [], folder, prefix, limit=2)
-    for q in res.get("image_queries") or []:
-        if len(imgs) >= 4:
+    names = res.get("visuals") or []
+    imgs = topic_images(names, folder, prefix, limit=2)
+    for n, name in enumerate(names):  # more photos of the named people/places themselves
+        if len(imgs) >= 3:
+            break
+        imgs += [{"path": m["path"], "credit": m["credit"], "title": m["title"]}
+                 for m in commons_photos(name, folder, f"{prefix}-c{n}")]
+    for q in res.get("image_queries") or []:  # last resort: topical photos that mention the subject
+        if len(imgs) >= 3:
             break
         imgs += openverse_images(q, folder, f"{prefix}-{len(imgs)}")
     video = None
@@ -259,8 +267,15 @@ def make_mystery(cfg, out_dir, slot_no):
                 pass
         url = "https://en.wikipedia.org/wiki/" + page["title"].replace(" ", "_")
         res.update(music="suspense", meme_line="", tragedy=False)
+        extra = []
+        try:
+            from .media import commons_photos
+            extra = [{"type": "img", "path": m["path"], "credit": m["credit"]}
+                     for m in commons_photos(page["title"], out_dir, "myst", limit=2)]
+        except Exception as e:
+            print(f"   (more mystery photos failed: {e})")
         res.update(type="mystery", urls=[url], sources=["Wikipedia"], image=image, credit=credit, chip=None,
-                   media=[{"type": "img", "path": image, "credit": credit}] if image else [])
+                   media=([{"type": "img", "path": image, "credit": credit}] if image else []) + extra)
         return res
     return None
 
@@ -298,7 +313,7 @@ def make_reel_content(cfg, slot_no, out_dir, used_urls):
               "supernatural": lambda: make_supernatural(cfg, used_urls, out_dir),
               "celeb": lambda: __import__("newsdesk.cricket", fromlist=["x"]).celeb_news(cfg, used_urls, out_dir),
               "cricket_news": lambda: __import__("newsdesk.cricket", fromlist=["x"]).cricket_news(cfg, used_urls, out_dir),
-              "cricket_stats": lambda: __import__("newsdesk.cricket", fromlist=["x"]).cricket_stats(cfg, out_dir),
+              "cricket_stats": lambda: __import__("newsdesk.cricket", fromlist=["x"]).cricket_stats(cfg, out_dir, offset=slot_no),
               "cricket": lambda: __import__("newsdesk.cricket", fromlist=["x"]).make_cricket(cfg, used_urls, out_dir)}
     content = makers[kind]()
     if content is None and kind.startswith("cricket"):  # the other cricket kind before giving up

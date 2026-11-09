@@ -137,17 +137,17 @@ weekly:
 #   supernatural = a current "strange claim" news report, always attributed, never presented as true
 reels:
   words: "45 to 60"           # ~20-30 s of Hindi speech at the configured speed
-  slots:
-    - {hour: 9,  type: news}
-    - {hour: 12, type: cricket_news}                # 12:07 trending cricket news (already has a cron-job.org job)
-    - {hour: 15, type: mystery, youtube: true}      # youtube: true = also posted as a YouTube Short
-    - {hour: 18, type: supernatural}
-    - {hour: 20, type: mystery, youtube: true}
+  slots:                      # priority: cricket > celeb and mystery > news. youtube: true = also a YouTube Short
+    - {hour: 9,  type: cricket_news, youtube: true}   # slots 0-5 and 8 have cron-job.org jobs already
+    - {hour: 12, type: celeb}
+    - {hour: 15, type: mystery}
+    - {hour: 18, type: cricket_news, youtube: true}
+    - {hour: 20, type: cricket_stats, youtube: true}
     - {hour: 22, type: celeb}
-    - {hour: 10, type: mystery, youtube: true}      # 10:37
-    - {hour: 13, type: cricket_stats}                 # 13:37 player stats face-off
-    - {hour: 16, type: mystery}                     # 16:07
-    - {hour: 21, type: mystery}                     # 21:07
+    - {hour: 10, type: news}                           # 10:37  (slot 6: needs a cron-job.org job)
+    - {hour: 13, type: cricket_news}                   # 13:37  (slot 7: needs a cron-job.org job)
+    - {hour: 16, type: mystery}                        # 16:07
+    - {hour: 21, type: supernatural}                   # 21:07  (slot 9: needs a cron-job.org job)
   supernatural_query: '(ghost OR haunted OR paranormal OR UFO OR "black magic" OR exorcism OR tantrik OR mysterious OR "unexplained") India when:3d'
   hashtags:
     news: ["#hindinews", "#news", "#indianews", "#factcheck", "#zeromasala", "#reels"]
@@ -162,7 +162,11 @@ reels:
                   ["Rohit Sharma", "Sachin Tendulkar"], ["Virat Kohli", "Babar Azam"], ["Jasprit Bumrah", "Pat Cummins"],
                   ["Virat Kohli", "Joe Root"], ["Shubman Gill", "Yashasvi Jaiswal"], ["Ravindra Jadeja", "Ravichandran Ashwin"],
                   ["Sachin Tendulkar", "Ricky Ponting"], ["MS Dhoni", "Rishabh Pant"], ["Hardik Pandya", "Ben Stokes"],
-                  ["Suryakumar Yadav", "Travis Head"], ["Kapil Dev", "Imran Khan"], ["Kuldeep Yadav", "Rashid Khan"]]
+                  ["Suryakumar Yadav", "Travis Head"], ["Kapil Dev", "Imran Khan"], ["Kuldeep Yadav", "Rashid Khan"],
+                  ["Virat Kohli", "Steve Smith"], ["Rohit Sharma", "David Warner"], ["Jasprit Bumrah", "Mitchell Starc"],
+                  ["KL Rahul", "Rishabh Pant"], ["Smriti Mandhana", "Harmanpreet Kaur"], ["Shreyas Iyer", "Suryakumar Yadav"],
+                  ["Virender Sehwag", "Chris Gayle"], ["Anil Kumble", "Shane Warne"], ["Rahul Dravid", "Sunil Gavaskar"],
+                  ["Mohammed Siraj", "Arshdeep Singh"], ["Shikhar Dhawan", "David Warner"], ["Yuzvendra Chahal", "Ravichandran Ashwin"]]
   # more mystery topics are pulled from these Wikipedia categories (after the curated lists below)
   mystery_categories: ["Haunted places in India", "Ghost towns in India", "Unexplained phenomena", "Cryptids",
                        "Lost ships", "Undeciphered writing systems", "Archaeological sites in India"]

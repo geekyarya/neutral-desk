@@ -65,6 +65,47 @@ def topic_images(titles, out_dir, prefix, limit=3):
     return found
 
 
+GENERIC = {"cricket", "match", "stadium", "team", "india", "indian", "photo", "news", "film", "movie", "game", "world"}
+
+
+def _tokens(text):
+    return {w for w in re.findall(r"[a-z]{4,}", str(text).lower())}
+
+
+def relevant(query, *texts):
+    """True if a search hit's title/tags mention the query's distinctive words (names, places), so photos fit the story."""
+    want = _tokens(query)
+    key = want - GENERIC or want
+    have = _tokens(" ".join(str(t) for t in texts))
+    return bool(key & have)
+
+
+def commons_photos(query, out_dir, prefix, limit=1):
+    """Freely licensed Commons photos whose file name mentions the subject (a person, team, film or place)."""
+    out_dir, found = Path(out_dir), []
+    try:
+        r = requests.get("https://commons.wikimedia.org/w/api.php", headers=WIKI_UA, timeout=30, params={
+            "action": "query", "format": "json", "list": "search", "srnamespace": 6, "srsearch": query,
+            "srlimit": 20})
+        hits = [h["title"][5:] for h in r.json().get("query", {}).get("search", [])]
+    except (requests.RequestException, ValueError, KeyError) as e:
+        print(f"   (commons search failed for {query}: {e})")
+        return found
+    print(f"   commons search '{query}': {len(hits)} files")
+    for i, name in enumerate(hits):
+        if len(found) >= limit:
+            break
+        if not name.lower().endswith((".jpg", ".jpeg", ".png")) or not relevant(query, name):
+            continue
+        try:
+            path, credit = free_image(name, out_dir / f"{prefix}-{i}")
+        except (requests.RequestException, ValueError, KeyError):
+            continue
+        if path:
+            found.append({"type": "img", "path": path, "credit": credit, "title": name})
+    return found
+
+
 def openverse_images(query, out_dir, prefix, limit=1):
     """Creative Commons photos (Flickr and more) from Openverse that allow commercial use and adaptation."""
     out_dir = Path(out_dir)
@@ -80,6 +121,8 @@ def openverse_images(query, out_dir, prefix, limit=1):
             break
         if (res.get("width") or 0) < 800:
             continue
+        if not relevant(query, res.get("title"), " ".join(t.get("name", "") for t in res.get("tags") or [])):
+            continue  # not clearly about the subject
         try:
             img = requests.get(res["url"], headers=WIKI_UA, timeout=30)
             img.raise_for_status()
@@ -109,6 +152,8 @@ def commons_video(query, out_dir, prefix, seconds=10):
     except (requests.RequestException, ValueError, KeyError):
         return None
     for title in titles:
+        if not relevant(query, title):
+            continue
         try:
             r = requests.get("https://commons.wikimedia.org/w/api.php", headers=WIKI_UA, timeout=30, params={
                 "action": "query", "format": "json", "titles": title, "prop": "imageinfo",
@@ -142,6 +187,10 @@ def add_story_images(episode, out_dir, max_photos=4):
         folder = Path(out_dir) / "images"
         folder.mkdir(parents=True, exist_ok=True)
         imgs = topic_images(seg.get("visuals") or [], folder, seg["id"], limit=2)
+        for n, name in enumerate(seg.get("visuals") or []):
+            if len(imgs) >= 3:
+                break
+            imgs += commons_photos(name, folder, f"{seg['id']}-c{n}")
         for q in seg.get("image_queries") or []:
             if len(imgs) >= max_photos:
                 break
