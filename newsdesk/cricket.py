@@ -98,11 +98,15 @@ def _story_from_items(cfg, items, prompt, kind, out_dir, music="upbeat", style=N
         return None
     text = "\n".join(f"[{n}] ({src}) {title}" for n, (title, src, _) in enumerate(items))
     res = complete_json(cfg, prompt.format(items=text, style=style or persona(cfg)["style"], **_lang(cfg)))
-    idx = [i for i in (res.get("index") or []) if isinstance(i, int) and 0 <= i < len(items)]
+    raw = res.get("index")
+    raw = [raw] if isinstance(raw, int) else raw if isinstance(raw, list) else []
+    idx = [i for i in raw if isinstance(i, int) and 0 <= i < len(items)]
     if not idx:
+        print(f"   {kind}: the AI picked no item (index={res.get('index')!r}, keys={sorted(res)[:6]})")
         return None
     res = _finish(res, cfg)
     if not res["script"]:
+        print(f"   {kind}: script empty after language check")
         return None
     res.update(_music_and_meme(res))
     if kind == "cricket":
