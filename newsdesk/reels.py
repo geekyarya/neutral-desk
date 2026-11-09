@@ -311,6 +311,7 @@ def make_reel_content(cfg, slot_no, out_dir, used_urls):
     makers = {"news": lambda: make_news(cfg, used_urls, out_dir),
               "mystery": lambda: make_mystery(cfg, out_dir, slot_no),
               "supernatural": lambda: make_supernatural(cfg, used_urls, out_dir),
+              "cars": lambda: __import__("newsdesk.cricket", fromlist=["x"]).car_news(cfg, used_urls, out_dir),
               "celeb": lambda: __import__("newsdesk.cricket", fromlist=["x"]).celeb_news(cfg, used_urls, out_dir),
               "cricket_news": lambda: __import__("newsdesk.cricket", fromlist=["x"]).cricket_news(cfg, used_urls, out_dir),
               "cricket_stats": lambda: __import__("newsdesk.cricket", fromlist=["x"]).cricket_stats(cfg, out_dir, offset=slot_no),
@@ -338,7 +339,7 @@ def caption_text(content, cfg):
         credits = [m["credit"] for m in content.get("media") or [] if m.get("credit")]
         if credits:
             lines.append("Photos/video: " + "; ".join(credits[:4]))
-    note = t["reel_disclosure_plain"] if content["type"] in ("news", "cricket", "celeb") else t["reel_disclosure"]
+    note = t["reel_disclosure_plain"] if content["type"] in ("news", "cricket", "celeb", "cars") else t["reel_disclosure"]
     lines += [""] + ([note, ""] if note else []) + [" ".join(cfg["reels"]["hashtags"][content["type"]])]
     return "\n".join(lines)[:2100]
 

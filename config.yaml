@@ -125,7 +125,7 @@ feeds:
 shorts:
   count: 2             # 1 top story + 1 celeb news (when the bulletin has one)
 
-bulletin_extras: [cricket, celeb, supernatural]   # rapid-round segments added after the cross-checked stories
+bulletin_extras: [cricket, celeb, cars, supernatural]   # rapid-round segments added after the cross-checked stories
 
 # Sunday "week in review" (made from the week's daily scripts, no AI calls)
 weekly:
@@ -137,25 +137,27 @@ weekly:
 #   supernatural = a current "strange claim" news report, always attributed, never presented as true
 reels:
   words: "45 to 60"           # ~20-30 s of Hindi speech at the configured speed
-  slots:                      # priority: cricket > celeb and mystery > news. youtube: true = also a YouTube Short
-    - {hour: 9,  type: cricket_news, youtube: true}   # slots 0-5 and 8 have cron-job.org jobs already
+  slots:                      # priority: cricket > celeb and mystery > cars > news. youtube: true = also a YouTube Short
+    - {hour: 9,  type: cricket_news, youtube: true}   # cron-job.org jobs exist for slots 0-5, 8 and 9
     - {hour: 12, type: celeb}
-    - {hour: 15, type: mystery}
+    - {hour: 15, type: cars}
     - {hour: 18, type: cricket_news, youtube: true}
     - {hour: 20, type: cricket_stats, youtube: true}
     - {hour: 22, type: celeb}
-    - {hour: 10, type: news}                           # 10:37  (slot 6: needs a cron-job.org job)
-    - {hour: 13, type: cricket_news}                   # 13:37  (slot 7: needs a cron-job.org job)
+    - {hour: 10, type: mystery}                        # 10:37  (slot 6: no cron-job.org job yet)
+    - {hour: 13, type: news}                           # 13:37  (slot 7: no cron-job.org job yet)
     - {hour: 16, type: mystery}                        # 16:07
-    - {hour: 21, type: supernatural}                   # 21:07  (slot 9: needs a cron-job.org job)
+    - {hour: 21, type: cricket_news}                   # 21:07
   supernatural_query: '(ghost OR haunted OR paranormal OR UFO OR "black magic" OR exorcism OR tantrik OR mysterious OR "unexplained") India when:3d'
   hashtags:
     news: ["#hindinews", "#news", "#indianews", "#factcheck", "#zeromasala", "#reels"]
     mystery: ["#mystery", "#rahasya", "#unsolvedmysteries", "#history", "#hindi", "#zeromasala", "#reels"]
     cricket: ["#cricket", "#teamindia", "#indiancricket", "#cricketnews", "#hindi", "#zeromasala", "#reels"]
+    cars: ["#carnews", "#cars", "#carsofindia", "#ev", "#hindi", "#zeromasala", "#reels"]
     celeb: ["#bollywood", "#celebnews", "#entertainment", "#hindi", "#zeromasala", "#reels"]
     supernatural: ["#ajabgajab", "#mystery", "#strangenews", "#hindinews", "#zeromasala", "#reels"]
   celeb_query: 'Bollywood (film OR trailer OR "box office" OR award OR OTT OR actor OR actress) India when:1d'
+  cars_query: '(car OR SUV OR EV OR bike) (launch OR price OR "launched" OR unveils OR sales) India when:2d'
   cricket_query: 'cricket (India OR "Team India" OR BCCI OR IPL OR "Test series" OR ODI OR T20) when:2d'
   # player pairs for the stats face-off Reels (English Wikipedia titles; stats come from their infoboxes)
   cricket_pairs: [["Virat Kohli", "Rohit Sharma"], ["Virat Kohli", "Sachin Tendulkar"], ["Jasprit Bumrah", "Mohammed Shami"],

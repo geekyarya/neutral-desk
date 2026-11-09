@@ -62,7 +62,20 @@ Keep it light, playful and respectful; tease the news, never the person's privat
 ITEMS:
 {items}
 """
-    return news, stats, celeb
+    cars = """You write 20-30 second car news Reels for a fact-first channel called Zero Masala.
+Below are recent headlines about cars, bikes and EVs in India. Pick the ONE most interesting item for Indian
+buyers (a launch, price, new feature, EV news, sales record, recall). Use all items about that same story. State
+prices, specs and dates ONLY if they appear in the items; attribute them ("according to ..."); never invent a number.
+Skip (return {{"index": []}}) crashes, deaths, accidents and anything that is an ad. Name the exact car, brand
+and model so photos can be matched.
+""" + COMMON_RULES + extra_keys + """- "index": list of the numbers of the items about the chosen story.
+
+{style}
+
+ITEMS:
+{items}
+"""
+    return news, stats, celeb, cars
 
 
 def _google_items(query):
@@ -102,6 +115,17 @@ def _story_from_items(cfg, items, prompt, kind, out_dir, music="upbeat", style=N
                source_items=[{"outlet": c[1], "title": c[0], "url": c[2]} for c in chosen],
                image=None, credit=None, chip=None, media=_media_for(res, out_dir, kind))
     if kind == "cricket":
+        res["media"] = _with_photos(res["media"], res.get("visuals") or [], out_dir)
+    return res
+
+
+def car_news(cfg, used_urls, out_dir):
+    items = _google_items(cfg["reels"].get("cars_query", "new car launch India when:2d"))
+    res = _story_from_items(cfg, [i for i in items if i[2] not in used_urls], _prompts()[3], "cars", out_dir,
+                            style=CRICKET_STYLE.replace("cricket-fan commentator", "car-enthusiast").replace(
+                                "cricket", "car"))
+    if res:
+        res["angry"] = False
         res["media"] = _with_photos(res["media"], res.get("visuals") or [], out_dir)
     return res
 
@@ -210,6 +234,7 @@ def build_extras(cfg, used_urls=()):
     from .strings import T
     t, out = T(cfg), []
     makers = {"cricket": lambda: cricket_news(cfg, set(used_urls), None_dir()),
+              "cars": lambda: car_news(cfg, set(used_urls), None_dir()),
               "celeb": lambda: celeb_news(cfg, set(used_urls), None_dir()),
               "supernatural": lambda: make_supernatural(cfg, set(used_urls), None_dir())}
     for kind in cfg.get("bulletin_extras") or []:
