@@ -47,20 +47,25 @@ def publish_reel(video_url, caption, cfg, token=None):
         raise RuntimeError("Set IG_TOKEN (Instagram access token)")
     v = cfg["instagram"]["api_version"]
     base, uid, username, token = _account(token, v)
-    container = _check(requests.post(f"{base}/{v}/{uid}/media", timeout=60, data={
-        "media_type": "REELS", "video_url": video_url, "caption": caption, "share_to_feed": "true",
-        "access_token": token}))["id"]
-    # Instagram downloads and processes the video; wait until it's ready
-    for _ in range(60):
-        status = _check(requests.get(f"{base}/{v}/{container}", timeout=30,
-                                     params={"fields": "status_code,status", "access_token": token}))
+    for attempt in range(3):  # Instagram sometimes fails to fetch/process a fine video (error 2207077): retry
+        container = _check(requests.post(f"{base}/{v}/{uid}/media", timeout=60, data={
+            "media_type": "REELS", "video_url": video_url, "caption": caption, "share_to_feed": "true",
+            "access_token": token}))["id"]
+        # Instagram downloads and processes the video; wait until it's ready
+        for _ in range(60):
+            status = _check(requests.get(f"{base}/{v}/{container}", timeout=30,
+                                         params={"fields": "status_code,status", "access_token": token}))
+            if status.get("status_code") in ("FINISHED", "ERROR", "EXPIRED"):
+                break
+            time.sleep(10)
+        else:
+            raise RuntimeError("Instagram took too long to process the video")
         if status.get("status_code") == "FINISHED":
             break
-        if status.get("status_code") in ("ERROR", "EXPIRED"):
+        print(f"   Instagram could not process the video (try {attempt + 1}/3): {status.get('status')}")
+        if attempt == 2:
             raise RuntimeError(f"Instagram could not process the video: {status}")
-        time.sleep(10)
-    else:
-        raise RuntimeError("Instagram took too long to process the video")
+        time.sleep(30)
     media = _check(requests.post(f"{base}/{v}/{uid}/media_publish", timeout=60,
                                  data={"creation_id": container, "access_token": token}))["id"]
     link = requests.get(f"{base}/{v}/{media}", params={"fields": "permalink", "access_token": token},

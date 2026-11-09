@@ -11,10 +11,16 @@ MERGE_SIMILARITY = 0.2  # same-event clusters measured ~0.33, unrelated ones < 0
 def cluster_stories(articles, cfg):
     ed = cfg["editor"]
     if len(articles) < 2:
-        return []
+        return [], []
     texts = [f"{a['title']} {a['title']} {a['summary']}" for a in articles]
     X = TfidfVectorizer(stop_words="english", sublinear_tf=True, min_df=1, max_df=0.3,
                         ngram_range=(1, 2)).fit_transform(texts).toarray()
+    keep = X.any(axis=1)  # an article with no usable words gives a zero vector, which cosine distance rejects
+    if not keep.all():
+        articles = [a for a, k in zip(articles, keep) if k]
+        X = X[keep]
+        if len(articles) < 2:
+            return [], []
     labels = AgglomerativeClustering(n_clusters=None, metric="cosine", linkage="average",
                                      distance_threshold=ed["cluster_distance"]).fit_predict(X)
 
