@@ -45,7 +45,7 @@ Return JSON with exactly these keys:
   "upbeat" (achievements, wins, good news), "chill" (ordinary politics, business, weather, science),
   "suspense" (unexplained or mysterious things), or "none" (any tragedy: silence is more respectful).
 - "meme_line": ONLY if tragedy is false: a short, funny meme-style sticker line (max 6 words, written exactly as it
-  appears in your script) in internet / Gen Z Hinglish, e.g. "सीन बन गया भाई!", "ये क्या हो रहा है भाई!", "L टेक है ये".
+  appears in your script) in internet / Gen Z Hinglish. Never use "सीन बन गया भाई" (overused).
   Put that same line as its own sentence in the MIDDLE of "script". Use "" for tragedies. {meme_hint}
 - "image_queries": 2 or 3 short English photo-search phrases for this story (e.g. "Ramlila Maidan rally",
   "Arunachal Pradesh border", "GSLV rocket launch"). Places, events, objects; never private individuals.
@@ -184,10 +184,18 @@ def _music_and_meme_raw(res):
     return {"tragedy": tragedy, "music": music, "meme_line": meme, "meme_at": round(min(max(pos, 0.2), 0.8), 2)}
 
 
-MEME_BANK = ["सीन बन गया भाई!", "ये क्या हो रहा है भाई!", "कुकिंग चल रही है!", "L टेक है ये!", "W खबर!",
-             "NPC वाली हरकत!", "ऑरा माइनस!", "मेन कैरेक्टर एनर्जी!", "टच ग्रास भाई!", "रेशियो हो गया!",
-             "नो कैप, सच में!", "भाई कुछ भी!", "डेलूलू है क्या?", "पैसा वसूल!", "हेरा फेरी वाला सीन!",
-             "रसोड़े में कौन था?", "सब कुछ चंगा सी!", "ये तो होना ही था!", "बवाल मच गया!", "कहानी में ट्विस्ट!"]
+MEME_BANK = [
+    "ये क्या हो रहा है भाई!", "कुकिंग चल रही है!", "L टेक है ये!", "W खबर!", "NPC वाली हरकत!", "ऑरा माइनस!",
+    "मेन कैरेक्टर एनर्जी!", "टच ग्रास भाई!", "रेशियो हो गया!", "नो कैप, सच में!", "भाई कुछ भी!", "डेलूलू है क्या?",
+    "पैसा वसूल!", "हेरा फेरी वाला सीन!", "रसोड़े में कौन था?", "सब कुछ चंगा सी!", "ये तो होना ही था!", "बवाल मच गया!",
+    "कहानी में ट्विस्ट!", "ऑरा +1000!", "सिग्मा मूव!", "ब्रूह, सीरियसली?", "वाइब चेक फेल!", "लोअ-की डरावना!",
+    "रिज़ बिल्कुल नहीं!", "भाई, ये तो कैप है!", "बिल्कुल GOAT!", "भाई ने खेल कर दिया!", "बैकग्राउंड म्यूज़िक चाहिए!",
+    "पॉपकॉर्न निकालो!", "ये एपिसोड मिस मत करना!", "चिल मार भाई!", "खेला हो गया!", "फुल ड्रामा चालू!",
+    "जनता बोली: क्या बात!", "प्लॉट आर्मर टूट गया!", "भाई ने ये भी कर दिया!", "अरे भाई, क्या कर दिया!",
+    "माइक ड्रॉप मोमेंट!", "ये तो गजब हो गया!", "दिमाग का दही!", "फीलिंग फ्लैश!", "सीधा 440 वोल्ट!",
+    "ट्रेंड में आ गया!", "भाई साहब, वाह!", "रोस्ट हो गया!", "लेवल अनलॉक्ड!", "ये बात हज़म नहीं हुई!",
+    "गेम चेंजर!", "ताली बजाओ भाई!", "हवा टाइट!", "पूरा पैसा वसूल!", "बिल्कुल फिल्मी!",
+]
 
 
 def meme_hint(used):

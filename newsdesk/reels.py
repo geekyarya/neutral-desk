@@ -38,7 +38,8 @@ extra_keys = """- "angry": true only if the reports describe clear wrongdoing, n
 - "music": "tense" (wrongdoing, attacks, anger), "upbeat" (good news), "chill" (ordinary news), "suspense"
   (mysterious things) or "none" (tragedies).
 - "meme_line": only if tragedy is false: a funny Gen Z meme-style sticker line (max 6 words, exactly as it appears
-  as its own sentence in the middle of "script"), e.g. "सीन बन गया भाई!". "" for tragedies.
+  as its own sentence in the middle of "script"). Different every time; never "सीन बन गया भाई". {meme_hint}
+  "" for tragedies.
 - "visuals": 2-3 English Wikipedia article titles of the SPECIFIC people, teams, films, places or institutions named
   in the story, exactly as Wikipedia titles them (e.g. "Rohit Sharma", "Wankhede Stadium"). Never generic topics.
 - "image_queries": 2-3 short English photo-search phrases naming the specific subject (e.g. "Wankhede Stadium
@@ -100,7 +101,9 @@ def pick_slot(cfg, slot=None, now=None):
 def _lang(cfg):
     t = T(cfg)
     short = "Hindi (Devanagari)" if cfg["channel"]["language"] == "hi" else "English"
-    return {"language": t["llm_language"], "language_short": short, "words": cfg["reels"]["words"]}
+    from .editor import meme_hint
+    return {"language": t["llm_language"], "language_short": short, "words": cfg["reels"]["words"],
+            "meme_hint": meme_hint([])}
 
 
 def _finish(res, cfg):
