@@ -38,7 +38,7 @@ extra_keys = """- "angry": true only if the reports describe clear wrongdoing, n
 - "music": "tense" (wrongdoing, attacks, anger), "upbeat" (good news), "chill" (ordinary news), "suspense"
   (mysterious things) or "none" (tragedies).
 - "meme_line": only if tragedy is false: a funny Gen Z meme-style sticker line (max 6 words, exactly as it appears
-  as its own sentence in the middle of "script"). Different every time; never "सीन बन गया भाई". {meme_hint}
+  as its own sentence in the middle of "script"). Different every time. {meme_hint}
   "" for tragedies.
 - "visuals": 2-3 English Wikipedia article titles of the SPECIFIC people, teams, films, places or institutions named
   in the story, exactly as Wikipedia titles them (e.g. "Rohit Sharma", "Wankhede Stadium"). Never generic topics.

@@ -45,7 +45,7 @@ Return JSON with exactly these keys:
   "upbeat" (achievements, wins, good news), "chill" (ordinary politics, business, weather, science),
   "suspense" (unexplained or mysterious things), or "none" (any tragedy: silence is more respectful).
 - "meme_line": ONLY if tragedy is false: a short, funny meme-style sticker line (max 6 words, written exactly as it
-  appears in your script) in internet / Gen Z Hinglish. Never use "सीन बन गया भाई" (overused).
+  appears in your script) in internet / Gen Z Hinglish.
   Put that same line as its own sentence in the MIDDLE of "script". Use "" for tragedies. {meme_hint}
 - "image_queries": 2 or 3 short English photo-search phrases for this story (e.g. "Ramlila Maidan rally",
   "Arunachal Pradesh border", "GSLV rocket launch"). Places, events, objects; never private individuals.
@@ -199,9 +199,8 @@ MEME_BANK = [
 
 
 def meme_hint(used):
-    import random
-    fresh = [m for m in MEME_BANK if m not in used]
-    hint = "For variety pick a line like one of these (or invent a fresh one): " + ", ".join(random.sample(fresh, 4)) + "."
+    from .slang import prompt_hint
+    hint = prompt_hint(used) + " The meme_line should be one of these or a fresh one that suits THIS story."
     if used:
         hint += " Already used in this video, do NOT repeat: " + ", ".join(used) + "."
     return hint
