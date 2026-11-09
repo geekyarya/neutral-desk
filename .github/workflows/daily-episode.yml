@@ -26,10 +26,10 @@ on:
         type: boolean
         default: false
       format:
-        description: "Force today's video type (empty = by weekday in config.yaml)"
+        description: "Today's video type (auto = by weekday, set in config.yaml)"
         type: choice
-        options: ["", news, business, scam, horror]
-        default: ""
+        options: [auto, news, business, scam, horror]
+        default: auto
       llm:
         description: "Writer (test the backup with ollama)"
         type: choice
@@ -105,7 +105,7 @@ jobs:
       - name: Make bulletin + Shorts
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          EPISODE_FORMAT: ${{ inputs.format }}
+          EPISODE_FORMAT: ${{ inputs.format != 'auto' && inputs.format || '' }}
         run: |
           python run.py all
           echo "EPISODE_DATE=$(ls output | sort | tail -1)" >> "$GITHUB_ENV"
