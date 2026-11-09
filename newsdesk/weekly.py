@@ -47,6 +47,9 @@ def collect_week(end=None):
     stories = []
     for day in days:
         ep = _load_day(day)
+        if ep and ep.get("format"):  # case studies, scams and horror stories aren't news
+            print(f"  {day}: special video ({ep['format']}), skipped")
+            continue
         print(f"  {day}: {'found' if ep else 'missing'}")
         for seg in (ep or {}).get("segments", []):
             if seg["kind"] == "story":

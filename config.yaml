@@ -125,6 +125,31 @@ feeds:
 shorts:
   count: 2             # 1 top story + 1 celeb news (when the bulletin has one)
 
+# What the daily long video is, by weekday (Mon..Sun): news | business | scam | horror
+daily_formats: [news, business, news, scam, horror, news, news]
+
+special:
+  words: "110 to 130"          # per chapter (6-7 chapters, about 5-6 minutes in all)
+  business_topics: ["Nokia", "Kodak", "Blockbuster LLC", "Air India", "Jet Airways", "Kingfisher Airlines",
+                    "Tata Nano", "Amul", "Parle-G", "Maruti Suzuki", "Flipkart", "Paytm", "Ola Cabs", "Zomato",
+                    "Reliance Jio", "Cafe Coffee Day", "Netflix", "BlackBerry Limited", "Tesla, Inc.", "Uber",
+                    "Airbnb", "IKEA", "Titan Company", "Royal Enfield", "Hindustan Unilever", "Asian Paints",
+                    "IRCTC", "Zerodha", "Swiggy", "PhonePe", "Haldiram's", "Bisleri", "Lenskart", "Nykaa",
+                    "Maggi", "Yamaha Motor Company", "Hindustan Motors", "Ambassador (car)", "Apple Inc.",
+                    "Starbucks", "McDonald's", "Domino's", "Spotify", "YouTube", "Instagram", "WhatsApp",
+                    "Lego", "Nintendo", "Sony", "Samsung Electronics", "Xiaomi", "Honda", "Toyota"]
+  scam_topics: ["1992 Indian stock market scam", "Satyam scandal", "Telgi scam", "Saradha Group financial scandal",
+                "Ponzi scheme", "Charles Ponzi", "Bernie Madoff", "Enron scandal", "Theranos", "FTX",
+                "Wirecard scandal", "Lehman Brothers", "OneCoin", "BitConnect", "Fyre Festival",
+                "Advance-fee scam", "Pyramid scheme", "Volkswagen emissions scandal", "Panama Papers",
+                "Dot-com bubble", "Tulip mania", "South Sea Company", "Bre-X", "Barings Bank", "Phishing",
+                "Nigerian spam", "Romance scam", "Lottery scam", "Check washing", "Tech support scam"]
+  horror_themes: ["एक सुनसान रेलवे स्टेशन की आखिरी ट्रेन", "हॉस्टल का कमरा नंबर 13", "रात की शिफ्ट वाला खाली दफ्तर",
+                  "पुरानी हवेली में किराये का कमरा", "जंगल की सड़क पर रुकी हुई गाड़ी", "गांव का सूखा कुआं",
+                  "पहाड़ पर बंद पड़ा होमस्टे", "बंद स्कूल की घंटी", "पुरानी तस्वीर में एक और चेहरा",
+                  "लिफ्ट में तेरहवीं मंज़िल", "रात को बजता पुराना रेडियो", "खाली अस्पताल का लंबा गलियारा",
+                  "मेले के बाद की सुनसान झांकी", "रात की बस का आखिरी यात्री", "नई कॉलोनी का बंद फ्लैट"]
+
 bulletin_extras: [cricket, celeb, cars, supernatural]   # rapid-round segments added after the cross-checked stories
 
 # Sunday "week in review" (made from the week's daily scripts, no AI calls)

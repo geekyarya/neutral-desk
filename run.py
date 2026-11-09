@@ -34,6 +34,20 @@ def load(d):
 
 
 def stage_script(cfg, d):
+    from newsdesk.special import build_special, pick_format
+    fmt = pick_format(cfg)
+    if fmt != "news":
+        print(f"Today's long video: {fmt}")
+        try:
+            ep = build_special(cfg, fmt)
+        except Exception as e:  # never lose the day's video: fall back to the news bulletin
+            print(f"   special episode failed ({e}); making the news bulletin instead")
+            ep = None
+        if ep:
+            save(ep, d)
+            print(f"\nScript ready ({fmt}): {ep['title']}")
+            return ep
+        print("   could not write the special episode; making the news bulletin instead")
     from newsdesk.cluster import cluster_stories
     from newsdesk.editor import build_episode
     from newsdesk.fetch import fetch_all
@@ -73,7 +87,11 @@ def stage_video(cfg, d, ep):
         print("Finding free photos for each story...")
         ep = add_story_images(ep, d)
         save(ep, d)
-    out = render_episode(ep, cfg, d)
+    if ep.get("format") in ("business", "scam", "horror"):
+        from newsdesk.longform import render_special
+        out = render_special(ep, cfg, d)
+    else:
+        out = render_episode(ep, cfg, d)
     meta = build_metadata(ep, cfg)
     (d / "youtube_title.txt").write_text(meta["title"], encoding="utf-8")
     (d / "youtube_description.txt").write_text(meta["description"], encoding="utf-8")
@@ -82,6 +100,9 @@ def stage_video(cfg, d, ep):
 
 
 def stage_shorts(cfg, d, ep):
+    if ep.get("format"):
+        print("Special long video: no Shorts today.")
+        return ep
     from newsdesk.shorts import render_shorts
     print("Making Shorts...")
     ep = render_shorts(ep, cfg, d)

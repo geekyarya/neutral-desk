@@ -30,6 +30,8 @@ def credentials(interactive=True):
 
 
 def build_metadata(episode, cfg):
+    if episode.get("format"):  # special long videos carry their own title and description
+        return {"title": episode["title"], "description": episode["description"]}
     t = T(cfg)
     name = cfg["channel"]["name"]
     stories = [s for s in episode["segments"] if s["kind"] == "story"]
