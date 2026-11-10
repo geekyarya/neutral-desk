@@ -27,8 +27,9 @@ def _account(token, v):
                                  timeout=30))
         return IG_BASE, me["user_id"], me.get("username"), token
     # Facebook Login: a Page token knows its Instagram account directly; a user token lists its Pages
-    me = _check(requests.get(f"{FB_BASE}/{v}/me", timeout=30,
-                             params={"fields": "instagram_business_account{id,username}", "access_token": token}))
+    r = requests.get(f"{FB_BASE}/{v}/me", timeout=30,
+                     params={"fields": "instagram_business_account{id,username}", "access_token": token})
+    me = r.json() if r.ok else {}  # a user token has no such field (error 100): fall through to its Pages
     ig = me.get("instagram_business_account")
     if ig:
         return FB_BASE, ig["id"], ig.get("username"), token

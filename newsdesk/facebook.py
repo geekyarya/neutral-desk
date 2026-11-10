@@ -16,13 +16,25 @@ def _check(r):
     return r.json()
 
 
+def resolve_page(token, v):
+    """(page id, page name, page token) from either a Page token or a user token."""
+    r = requests.get(f"{BASE}/{v}/me/accounts", timeout=30, params={
+        "fields": "id,name,access_token,instagram_business_account", "access_token": token})
+    pages = r.json().get("data") if r.ok else None
+    if pages:  # a user token: use its Page (prefer the one with an Instagram account)
+        page = next((p for p in pages if p.get("instagram_business_account")), pages[0])
+        return page["id"], page.get("name"), page["access_token"]
+    me = _check(requests.get(f"{BASE}/{v}/me", params={"fields": "id,name", "access_token": token}, timeout=30))
+    return me["id"], me.get("name"), token
+
+
 def publish_fb_reel(video_url, caption, cfg, token=None):
     token = token or os.environ.get("FB_TOKEN") or os.environ.get("IG_TOKEN")
     if not token or not token.startswith("EAA"):
         raise RuntimeError("Set FB_TOKEN (a Facebook Page access token with pages_manage_posts)")
     v = cfg["instagram"]["api_version"]
-    page = _check(requests.get(f"{BASE}/{v}/me", params={"fields": "id,name", "access_token": token}, timeout=30))
-    pid = page["id"]
+    pid, pname, token = resolve_page(token, v)
+    page = {"id": pid, "name": pname}
     # 1) start an upload session, 2) let Facebook fetch the video from its URL, 3) publish it with the caption
     start = _check(requests.post(f"{BASE}/{v}/{pid}/video_reels", timeout=60,
                                  data={"upload_phase": "start", "access_token": token}))
@@ -50,7 +62,8 @@ def publish_fb_video(video_url, title, description, cfg, token=None):
     if not token or not token.startswith("EAA"):
         raise RuntimeError("Set FB_TOKEN (a Facebook Page access token with pages_manage_posts)")
     v = cfg["instagram"]["api_version"]
-    page = _check(requests.get(f"{BASE}/{v}/me", params={"fields": "id,name", "access_token": token}, timeout=30))
+    pid, pname, token = resolve_page(token, v)
+    page = {"id": pid, "name": pname}
     res = _check(requests.post(f"{BASE}/{v}/{page['id']}/videos", timeout=300, data={
         "file_url": video_url, "title": title[:250], "description": description[:5000], "access_token": token}))
     print(f"Published Facebook video on {page.get('name')}: https://www.facebook.com/{page['id']}/videos/{res['id']}")
