@@ -79,6 +79,10 @@ jobs:
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
         run: python run.py reel-publish --reel "$REEL_ID" --video-url "$VIDEO_URL"
+      - name: Un-host the video if Instagram failed (so the slot can be retried)
+        if: failure() && env.REEL_ID != '' && env.VIDEO_URL != ''
+        continue-on-error: true
+        run: gh release delete "reel-${REEL_ID}-${GITHUB_RUN_ID}" --cleanup-tag --yes
       - name: Post to Facebook Page
         if: env.REEL_ID != '' && env.HAS_FB == 'true' && (github.event_name == 'schedule' || inputs.publish)
         continue-on-error: true   # Facebook trouble must not block anything else

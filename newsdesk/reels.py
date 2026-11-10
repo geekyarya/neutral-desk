@@ -98,6 +98,14 @@ def pick_slot(cfg, slot=None, now=None):
     return min(slots, key=lambda s: abs(s["hour"] - hour))
 
 
+def slot_due(cfg, now=None, window=2):
+    """The slot whose hour started within the last `window` hours, or None. A scheduled backup that GitHub runs
+    hours late (e.g. at 04:00) must not steal a later slot such as 09:00."""
+    hour = (now or ist_now()).hour
+    due = [s for s in cfg["reels"]["slots"] if 0 <= (hour - s["hour"]) % 24 < window]
+    return max(due, key=lambda s: (hour - s["hour"]) % 24 * -1) if due else None
+
+
 def _lang(cfg):
     t = T(cfg)
     short = "Hindi (Devanagari)" if cfg["channel"]["language"] == "hi" else "English"

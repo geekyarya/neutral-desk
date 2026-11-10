@@ -126,7 +126,14 @@ def stage_reel(cfg, a):
     from newsdesk.reel_render import render_reel
     from newsdesk.reels import (caption_text, ist_now, make_reel_content, pick_slot, reel_already_posted,
                                 used_urls_from_github)
-    slot = pick_slot(cfg, a.slot)
+    if a.slot is None:  # a scheduled backup: only act if a slot is actually due now
+        from newsdesk.reels import slot_due
+        slot = slot_due(cfg)
+        if slot is None:
+            print("No Reel slot is due right now (late backup run); skipping.")
+            return
+    else:
+        slot = pick_slot(cfg, a.slot)
     slot_no = cfg["reels"]["slots"].index(slot)
     reel_id = ist_now().strftime("%Y-%m-%d-") + f"{slot['hour']:02d}"
     d = ROOT / "output" / "reels" / reel_id
