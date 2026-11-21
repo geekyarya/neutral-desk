@@ -157,8 +157,9 @@ def _media_for(res, out_dir, prefix):
         video = commons_video(q, folder, prefix, seconds=8)
         if video:
             break
+    from .media import dedupe
     media = [{"type": "video", "path": video["path"], "credit": video["credit"]}] if video else []
-    media += [{"type": "img", "path": m["path"], "credit": m["credit"]} for m in imgs]
+    media += [{"type": "img", "path": m["path"], "credit": m["credit"]} for m in dedupe(imgs)]
     print(f"   visuals: {len(imgs)} photos, {1 if video else 0} video")
     return media
 

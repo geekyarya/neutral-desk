@@ -341,5 +341,9 @@ def _with_photos(media, names, out_dir, want=3):
             break
         got = commons_photos(name, out_dir, f"cp{n}") or commons_photos(f"{name} cricket", out_dir, f"cq{n}")
         media, have = media + got, have + got
+    from .media import dedupe
+    media = [m for m in media if m["type"] != "img" or m in dedupe([m])]
+    imgs = dedupe([m for m in media if m["type"] == "img"])
+    media = [m for m in media if m["type"] != "img"] + imgs
     print(f"   cricket visuals: {len(media)} items")
     return media

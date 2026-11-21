@@ -84,6 +84,21 @@ def relevant(query, *texts, strict=False):
     return key <= have if strict else bool(key & have)
 
 
+def dedupe(items):
+    """Drop pictures that are the same file (a lead image also turns up in a Commons search)."""
+    import hashlib
+    seen, out = set(), []
+    for m in items:
+        try:
+            h = hashlib.md5(Path(m["path"]).read_bytes()).hexdigest()
+        except OSError:
+            continue
+        if h not in seen:
+            seen.add(h)
+            out.append(m)
+    return out
+
+
 def commons_photos(query, out_dir, prefix, limit=1):
     """Freely licensed Commons photos whose file name mentions the subject (a person, team, film or place)."""
     out_dir, found = Path(out_dir), []
