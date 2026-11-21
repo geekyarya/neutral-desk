@@ -134,6 +134,9 @@ def stage_reel(cfg, a):
             return
     else:
         slot = pick_slot(cfg, a.slot)
+    if not slot.get("enabled", True):
+        print("This slot is switched off in config.yaml; skipping.")
+        return
     slot_no = cfg["reels"]["slots"].index(slot)
     reel_id = ist_now().strftime("%Y-%m-%d-") + f"{slot['hour']:02d}"
     d = ROOT / "output" / "reels" / reel_id

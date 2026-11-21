@@ -68,16 +68,20 @@ def topic_images(titles, out_dir, prefix, limit=3):
 GENERIC = {"cricket", "match", "stadium", "team", "india", "indian", "photo", "news", "film", "movie", "game", "world"}
 
 
+STOP = {"the", "and", "of", "in", "at", "vs", "for"}
+
+
 def _tokens(text):
-    return {w for w in re.findall(r"[a-z]{4,}", str(text).lower())}
+    return {w for w in re.findall(r"[a-z]{2,}", str(text).lower()) if w not in STOP}
 
 
-def relevant(query, *texts):
-    """True if a search hit's title/tags mention the query's distinctive words (names, places), so photos fit the story."""
+def relevant(query, *texts, strict=False):
+    """True if a search hit's title/tags mention the query's distinctive words (names, places), so photos fit the
+    story. strict: ALL distinctive words must appear (so "KL Rahul" never matches a file about another Rahul)."""
     want = _tokens(query)
     key = want - GENERIC or want
     have = _tokens(" ".join(str(t) for t in texts))
-    return bool(key & have)
+    return key <= have if strict else bool(key & have)
 
 
 def commons_photos(query, out_dir, prefix, limit=1):
@@ -95,7 +99,7 @@ def commons_photos(query, out_dir, prefix, limit=1):
     for i, name in enumerate(hits):
         if len(found) >= limit:
             break
-        if not name.lower().endswith((".jpg", ".jpeg", ".png")) or not relevant(query, name):
+        if not name.lower().endswith((".jpg", ".jpeg", ".png")) or not relevant(query, name, strict=True):
             continue
         try:
             path, credit = free_image(name, out_dir / f"{prefix}-{i}")

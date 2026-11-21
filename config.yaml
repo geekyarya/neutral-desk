@@ -170,8 +170,8 @@ reels:
     - {hour: 18, type: cricket_news, youtube: true}
     - {hour: 20, type: cricket_stats, youtube: true}
     - {hour: 22, type: celeb}
-    - {hour: 10, type: mystery}                        # 10:37  (slot 6: no cron-job.org job yet)
-    - {hour: 13, type: news}                           # 13:37  (slot 7: no cron-job.org job yet)
+    - {hour: 10, type: mystery, enabled: false}        # 10:37 (off: 8 strong Reels a day instead of 10)
+    - {hour: 13, type: news, enabled: false}           # 13:37 (off)
     - {hour: 16, type: mystery}                        # 16:07
     - {hour: 21, type: cricket_news}                   # 21:07
   supernatural_query: '(ghost OR haunted OR paranormal OR UFO OR "black magic" OR exorcism OR tantrik OR mysterious OR "unexplained") India when:3d'
