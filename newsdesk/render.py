@@ -348,7 +348,8 @@ def render_episode(episode, cfg, out_dir):
     mouths = anchor_mod.mouth_track(audio, sr, fps)
     blinks = anchor_mod.blink_track(n_frames, fps)
     pz = persona(cfg)
-    sprites = anchor_mod.sprites(s(420), s(520), pz["character"]) if mode == "puppet" else None
+    show_anchor = cfg["video"].get("anchor", True)
+    sprites = anchor_mod.sprites(s(420), s(520), pz["character"]) if mode == "puppet" and show_anchor else None
     pip_d = s(pz.get("pip_size", 190))
     face_y = 0.52 if pz["character"] == "lion" else None  # zoom out a little so the suit and tie show
     pips = _pip_sprites(sprites, pip_d, face_y) if sprites else None
@@ -374,7 +375,7 @@ def render_episode(episode, cfg, out_dir):
                               im["credit"]))
             except OSError:
                 pass
-        if items and sprites is not None:
+        if items and (sprites is not None or not show_anchor):
             photos[seg["id"]] = items
     videos = {}  # open video readers, one per story at a time
 
@@ -426,7 +427,8 @@ def render_episode(episode, cfg, out_dir):
                 L.list_panel(layer, seg["headline"], [p.format(k=k) for p in L.t["how_points"]][: stage[0]],
                              numbered=False)
             else:
-                L.story_panel(layer, seg, stories.index(seg) + 1, len(stories), n_facts=stage[0], rest=stage[1])
+                L.story_panel(layer, seg, stories.index(seg) + 1, len(stories), n_facts=stage[0], rest=stage[1],
+                              w=None if show_anchor else W - s(120))
             if mode != "puppet":
                 L.desk(layer)
         cache[key] = layer
@@ -474,13 +476,14 @@ def render_episode(episode, cfg, out_dir):
             dd = ImageDraw.Draw(img)
             cw = small.length(dd, credit)
             small.draw(dd, (W - cw - s(14), s(64)), credit, (230, 230, 230), stroke=2, stroke_fill=(0, 0, 0))
-            shouting = bool(fx) and bool(seg.get("angry"))  # the whole story: furious or cool
-            calm_pips = fx["serious_pips"] if fx and seg.get("tragedy") else fx["cool_pips"] if fx else pips
-            pip = (calm_pips if fx and not shouting else pips)[(mouth, blink)]
-            pip = pip.rotate(2.5 * math.sin(tl * 2.2), resample=Image.BICUBIC)  # gentle head tilt
-            jx, jy = ((i * 7) % 9 - 4, (i * 5) % 7 - 3) if shake and shouting and mouth == 2 else (0, 0)
-            pos = (pip_pos[0] + s(jx), pip_pos[1] + s(jy) + int(s(3) * math.sin(tl * 7)))
-            img.alpha_composite(pip, pos)
+            if pips is not None:
+                shouting = bool(fx) and bool(seg.get("angry"))  # the whole story: furious or cool
+                calm_pips = fx["serious_pips"] if fx and seg.get("tragedy") else fx["cool_pips"] if fx else pips
+                pip = (calm_pips if fx and not shouting else pips)[(mouth, blink)]
+                pip = pip.rotate(2.5 * math.sin(tl * 2.2), resample=Image.BICUBIC)  # gentle head tilt
+                jx, jy = ((i * 7) % 9 - 4, (i * 5) % 7 - 3) if shake and shouting and mouth == 2 else (0, 0)
+                pos = (pip_pos[0] + s(jx), pip_pos[1] + s(jy) + int(s(3) * math.sin(tl * 7)))
+                img.alpha_composite(pip, pos)
         else:
             if fx:  # animated lion: head bob/tilt each frame, calm (shades) or burning while shouting
                 shouting = bool(seg.get("angry"))

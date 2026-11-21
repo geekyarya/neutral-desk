@@ -78,7 +78,8 @@ def render_reel(content, cfg, out_dir):
     f = {k: Font(sz, b) for k, (sz, b) in {"brand": (40, True), "small": (26, True), "tag": (34, True),
                                            "title": (70, True), "cap": (64, True), "credit": (22, False)}.items()}
     name = cfg["channel"].get("spoken_name") or cfg["channel"]["name"]
-    outro = t["reel_outro"].format(name=name)
+    variants = t.get("reel_outros") or [t["reel_outro"]]
+    outro = variants[sum(map(ord, content["title"])) % len(variants)].format(name=name)
     wav = out_dir / "voice.wav"
     speaker = Speaker(cfg)
     angry = bool(content.get("angry")) and not content.get("tragedy")
@@ -109,22 +110,25 @@ def render_reel(content, cfg, out_dir):
             pass
     mouths = anchor_mod.mouth_track(audio, sr, FPS)
     blinks = anchor_mod.blink_track(n, FPS)
+    show_anchor = cfg["video"].get("anchor", True)
+    pip = None
     if items:
         shade = _shade()
         cap_y = 1080
-        pip = None
-        if content["type"] != "mystery":  # Babbar Bhai in a round corner window over the news visuals
+        if show_anchor and content["type"] != "mystery":  # the anchor in a round corner window over the visuals
             face_y = 0.52 if pz["character"] == "lion" else None
             sp = anchor_mod.sprites(420, 520, pz["character"], cool=not angry)
             pip = _pip_sprites(sp, 330, face_y)
             pip_pos = (W - 342 - 36, H - 342 - 70)
     else:
         base = _gradient()
-        ah = 820
-        aw = int(ah * 420 / 520)
-        sprites = anchor_mod.sprites(aw, ah, pz["character"], cool=not angry)
-        pos = ((W - aw) // 2, H - ah - 60)
-        cap_y = 640
+        sprites = None
+        if show_anchor:
+            ah = 820
+            aw = int(ah * 420 / 520)
+            sprites = anchor_mod.sprites(aw, ah, pz["character"], cool=not angry)
+            pos = ((W - aw) // 2, H - ah - 60)
+        cap_y = 640 if show_anchor else 900
     readers = {}
 
     cap_cache = {}
@@ -169,13 +173,14 @@ def render_reel(content, cfg, out_dir):
                 d = ImageDraw.Draw(img)
                 f["credit"].draw(d, (44, H - 52), (("Video: " if kind == "video" else "Photo: ") + credit)[:80],
                                  (220, 220, 220), 2, (0, 0, 0))
-            if pip:
+            if pip is not None:
                 img.alpha_composite(pip[(mouth, blink)], (pip_pos[0], pip_pos[1] + int(6 * math.sin(i / 7))))
         else:
-            key = (mouth, blink, ci)
+            key = (mouth, blink, ci) if sprites is not None else (0, False, ci)
             if key not in frame_cache:
                 img = base.copy()
-                img.alpha_composite(sprites[key[:2]], pos)
+                if sprites is not None:
+                    img.alpha_composite(sprites[key[:2]], pos)
                 ImageDraw.Draw(img).rectangle([0, H - 190, W, H], fill=(14, 22, 42))
                 ImageDraw.Draw(img).rectangle([0, H - 190, W, H - 184], fill=ACCENT)
                 img.alpha_composite(overlay)

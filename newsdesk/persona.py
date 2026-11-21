@@ -82,7 +82,7 @@ PERSONAS = {
             "abuses, slurs, insults about any religion, caste, community, gender or region, personal abuse of any "
             "named individual, saying someone committed a crime unless the reports say so, or any call for violence. "
             "For communal or religious clashes drop the anger and report calmly. Never imitate or name any real TV "
-            "anchor. Do not use any fixed catchphrase or slogan; end a story with a punchy line of your own, "
+            "anchor. Open every story with a fresh hook drawn from that story's most surprising detail and never reuse the same opening words twice. Do not use any fixed catchphrase or slogan; end a story with a punchy line of your own, "
             "or a respectful line for tragedies. The facts, numbers and attributions "
             "stay exactly as reported."
         ),

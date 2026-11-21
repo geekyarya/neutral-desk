@@ -295,7 +295,7 @@ def render_special(ep, cfg, out_dir):
     pz = persona(cfg)
     pip = None
     sprites = None
-    if not horror:
+    if not horror and cfg["video"].get("anchor", True):
         sprites = anchor_mod.sprites(s(420), s(520), pz["character"], cool=True)
         pip_d = s(190)
         pip = _pip_sprites(sprites, pip_d, 0.52 if pz["character"] == "lion" else None)
@@ -334,7 +334,7 @@ def render_special(ep, cfg, out_dir):
             d = ImageDraw.Draw(layer)
             y = H - s(150)
             for line in wrap(d, chunks[k][ci], f["cap"], W - s(300), 2):
-                x = (W - f["cap"].length(d, line)) / 2 - (s(80) if not horror else 0)
+                x = (W - f["cap"].length(d, line)) / 2 - (s(80) if pip else 0)
                 f["cap"].draw(d, (x, y), line, (255, 236, 120) if not horror else (235, 235, 235), 5, (0, 0, 0))
                 y += s(46)
             cap_cache[key] = layer

@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw
 
 from . import anchor as anchor_mod
 from .persona import persona
-from .render import ACCENT, AMBER, BG_BOTTOM, BG_TOP, GREEN, MUTED, WHITE, encode
+from .render import ACCENT, AMBER, BG_BOTTOM, BG_TOP, GREEN, MUTED, WHITE, _cover, _kenburns, encode
 from .strings import T, date_text
 from .text import Font, wrap
 from .tts import Speaker, read_wav
@@ -23,14 +23,15 @@ def short_text(seg):
     return " ".join(sentences[:3])
 
 
-def _base(cfg, seg):
+def _base(cfg, seg, plain=False):
     t = T(cfg)
     f = {k: Font(sz, b) for k, (sz, b) in {"brand": (40, True), "small": (26, True), "chip": (30, True),
                                            "h1": (60, True), "body": (36, False), "label": (30, True),
                                            "foot": (30, True)}.items()}
     g = np.linspace(0, 1, H)[:, None, None]
     arr = (np.array(BG_TOP) * (1 - g) + np.array(BG_BOTTOM) * g).astype(np.uint8)
-    img = Image.fromarray(np.repeat(arr, W, axis=1), "RGB").convert("RGBA")
+    img = (Image.new("RGBA", (W, H), (0, 0, 0, 0)) if plain
+           else Image.fromarray(np.repeat(arr, W, axis=1), "RGB").convert("RGBA"))
     d = ImageDraw.Draw(img)
 
     d.rectangle([0, 0, W, 120], fill=(8, 12, 24))
@@ -86,31 +87,83 @@ def render_short(seg, cfg, speaker, out_dir):
     audio, sr = read_wav(wav)
     n = int(len(audio) / sr * FPS)
 
-    base, f, text_bottom = _base(cfg, seg)
-    # anchor fills the space between the facts and the desk
-    ah = max(560, 1640 - max(text_bottom, 860))
-    aw = int(ah * 420 / 520)
-    sprites = anchor_mod.sprites(aw, ah, persona(cfg)["character"])
-    pos = ((W - aw) // 2, 1640 - ah)
-    d = ImageDraw.Draw(base)
-    d.rectangle([0, 1760, W, H], fill=(8, 12, 24))
-    foot = t["short_footer"]
-    f["foot"].draw(d, ((W - f["foot"].length(d, foot)) / 2, 1800), foot, WHITE)
-
+    show_anchor = cfg["video"].get("anchor", True)
+    photos = []
+    for im in seg.get("images") or []:
+        try:
+            photos.append(_cover(Image.open(Path(out_dir) / im["path"]), int(W * 1.12), int(H * 1.12)))
+        except OSError:
+            pass
     mouths = anchor_mod.mouth_track(audio, sr, FPS)
     blinks = anchor_mod.blink_track(n, FPS, seed=hash(seg["id"]) % 1000)
     cache = {}
 
-    def frame_rgb(i):
-        key = (int(mouths[min(i, len(mouths) - 1)]), bool(blinks[i]))
-        if key not in cache:
-            img = base.copy()
-            img.alpha_composite(sprites[key], pos)
-            _desk(img, f, cfg)
-            cache[key] = img.convert("RGB")
-        img = cache[key].copy()
-        ImageDraw.Draw(img).rectangle([0, 1754, int(W * (i + 1) / n), 1760], fill=WHITE)  # progress bar
-        return img.tobytes()
+    if show_anchor:
+        base, f, text_bottom = _base(cfg, seg)
+        # anchor fills the space between the facts and the desk
+        ah = max(560, 1640 - max(text_bottom, 860))
+        aw = int(ah * 420 / 520)
+        sprites = anchor_mod.sprites(aw, ah, persona(cfg)["character"])
+        pos = ((W - aw) // 2, 1640 - ah)
+        d = ImageDraw.Draw(base)
+        d.rectangle([0, 1760, W, H], fill=(8, 12, 24))
+        foot = t["short_footer"]
+        f["foot"].draw(d, ((W - f["foot"].length(d, foot)) / 2, 1800), foot, WHITE)
+
+        def frame_rgb(i):
+            key = (int(mouths[min(i, len(mouths) - 1)]), bool(blinks[i]))
+            if key not in cache:
+                img = base.copy()
+                img.alpha_composite(sprites[key], pos)
+                _desk(img, f, cfg)
+                cache[key] = img.convert("RGB")
+            img = cache[key].copy()
+            ImageDraw.Draw(img).rectangle([0, 1754, int(W * (i + 1) / n), 1760], fill=WHITE)  # progress bar
+            return img.tobytes()
+    else:  # no anchor: the story's photos fill the screen, spoken captions sit under the facts
+        from .reel_render import caption_chunks
+        base, f, text_bottom = _base(cfg, seg, plain=bool(photos))
+        d = ImageDraw.Draw(base)
+        d.rectangle([0, 1760, W, H], fill=(8, 12, 24))
+        foot = t["short_footer"]
+        f["foot"].draw(d, ((W - f["foot"].length(d, foot)) / 2, 1800), foot, WHITE)
+        shade = Image.fromarray(np.dstack([np.zeros((H, W, 3), np.uint8),
+                                           np.full((H, W), 150, np.uint8)]), "RGBA")
+        cap_font = Font(60, True)
+        chunks = caption_chunks(f"{short_text(seg)} {t['short_outro'].format(name=name)}", 5)
+        cap_cache = {}
+
+        def cap_layer(ci):
+            if ci not in cap_cache:
+                layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+                dd = ImageDraw.Draw(layer)
+                y = max(text_bottom + 40, 1180)
+                for line in wrap(dd, chunks[ci], cap_font, W - 120, 2):
+                    cap_font.draw(dd, ((W - cap_font.length(dd, line)) / 2, y), line, (255, 236, 120), 6, (0, 0, 0))
+                    y += 80
+                cap_cache[ci] = layer
+            return cap_cache[ci]
+
+        speech = max(duration - 0.4, 0.1)
+        weights = np.array([len(c) + 3 for c in chunks], dtype=float)
+        ends = np.cumsum(weights) / weights.sum() * speech * FPS
+
+        def frame_rgb(i):
+            if photos:
+                slot = n / len(photos)
+                k = min(int(i / slot), len(photos) - 1)
+                bg = _kenburns(photos[k], (i - k * slot) / slot, W, H, k % 2 == 1).convert("RGBA")
+                bg.alpha_composite(shade)
+            else:
+                bg = Image.new("RGBA", (W, H), (0, 0, 0, 255))
+                bg.paste(base.copy(), (0, 0))
+            if photos:
+                bg.alpha_composite(base)
+            ci = min(int(np.searchsorted(ends, i, side="right")), len(chunks) - 1)
+            bg.alpha_composite(cap_layer(ci))
+            img = bg.convert("RGB")
+            ImageDraw.Draw(img).rectangle([0, 1754, int(W * (i + 1) / n), 1760], fill=WHITE)
+            return img.tobytes()
 
     out = shorts_dir / f"{seg['id']}.mp4"
     from .sound import mix

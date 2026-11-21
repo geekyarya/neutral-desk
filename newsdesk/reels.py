@@ -27,7 +27,9 @@ IST = dt.timezone(dt.timedelta(hours=5, minutes=30))
 COMMON_RULES = """Return JSON with these keys:
 - "title": on-screen hook, max 45 characters, in {language_short}.
 - "script": what the narrator says, {words} words, in {language}
-  Start with a strong hook sentence. No greeting, no sign-off.
+  Start with a fresh hook built from THIS story's most surprising detail (never a stock opener such as "ब्रेकिंग",
+  "दोस्तों" or "क्या आप जानते हैं"), vary sentence structure from video to video, and finish with one short
+  original takeaway or a question for the viewer. No greeting, no sign-off.
 - "caption": Instagram caption, 2-3 short sentences in {language_short}, no hashtags.
 """
 
