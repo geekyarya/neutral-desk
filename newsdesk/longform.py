@@ -471,16 +471,16 @@ def save_special_thumbnail(ep, visual, cfg, out_dir, L, horror):
     d = ImageDraw.Draw(img)
     text = ep.get("thumb_text") or ep["segments"][0]["headline"]
     if ep.get("thumb_text") and not horror:  # bold banner across the top, like the reference
-        big = Font(s(78), True)
+        big = Font(s(64), True)
         lines = wrap(d, text, big, W - s(140), 2)
-        bh = s(30) + len(lines) * s(96)
+        bh = s(24) + len(lines) * s(80)
         d.rectangle([0, s(18), W, s(18) + bh], fill=(255, 214, 40))
         d.rectangle([0, s(18), s(26), s(18) + bh], fill=ACCENT)
         d.rectangle([W - s(26), s(18), W, s(18) + bh], fill=ACCENT)
         y = s(30)
         for line in lines:
             big.draw(d, ((W - big.length(d, line)) / 2, y), line, (15, 15, 15))
-            y += s(96)
+            y += s(80)
     else:
         img.alpha_composite(Image.fromarray(np.dstack([np.zeros((H, W, 3), np.uint8),
                                                        np.full((H, W), 120, np.uint8)]), "RGBA"))

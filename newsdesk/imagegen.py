@@ -11,8 +11,9 @@ from pathlib import Path
 import requests
 from PIL import Image
 
-STYLE = ("Semi-realistic Indian graphic-novel illustration, vibrant saturated colours, bold clean outlines, dramatic "
-         "cinematic lighting, expressive faces, widescreen 16:9, no text, no letters, no logos, no watermark. Scene: ")
+STYLE = ("Vibrant 2D digital comic-book illustration in a modern Indian graphic-novel style, bright saturated colours, "
+         "bold clean outlines, warm dramatic lighting, expressive cartoon faces, not photorealistic, not dark, "
+         "widescreen 16:9, no text, no letters, no logos, no watermark. Scene: ")
 
 
 GEMINI_IMAGE_MODELS = ["gemini-2.5-flash-image", "gemini-2.0-flash-preview-image-generation"]
@@ -52,7 +53,7 @@ def gemini_image(prompt, path):
     return None
 
 
-def generate(prompt, path, seed=1, tries=4):
+def generate(prompt, path, seed=1, tries=5):
     """One 16:9 illustration at `path` (jpg): Gemini image model first, then the free Pollinations service."""
     got = gemini_image(prompt, path)
     if got:
@@ -70,7 +71,7 @@ def generate(prompt, path, seed=1, tries=4):
                 return str(path)
         except (requests.RequestException, OSError):
             pass
-        time.sleep(6 * (attempt + 1))
+        time.sleep(8 * (attempt + 1))
     return None
 
 
@@ -93,12 +94,24 @@ def generate_scenes(ep, out_dir, workers=1):
         got = generate(prompt, path, seed)
         return target, got
 
-    done = 0
+    def keep(target, got):
+        key = "path" if "image" in target else "thumb_path"
+        target[key] = str(Path(got).relative_to(out_dir))
+
+    done, missing = 0, []
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        for target, got in pool.map(run, jobs):
+        for job, (target, got) in zip(jobs, pool.map(run, jobs)):
             if got:
-                key = "path" if "image" in target else "thumb_path"
-                target[key] = str(Path(got).relative_to(out_dir))
+                keep(target, got)
                 done += 1
+            else:
+                missing.append(job)
+            time.sleep(3)  # the free service throttles bursts
+    for target, path, seed in missing:  # second pass, different seeds, after a pause
+        time.sleep(20)
+        got = generate(target.get("image") or target.get("thumb_image"), path, seed + 100)
+        if got:
+            keep(target, got)
+            done += 1
     print(f"   illustrations: {done}/{len(jobs)} generated")
     return ep

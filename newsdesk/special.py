@@ -22,8 +22,8 @@ SCENE_KEYS = """- "title": a punchy Hinglish YouTube title (max 70 characters) w
   the text (no greeting, no channel name).
 - "summary": 2 sentences in Hindi for the video description.
 - "thumb_text": 3 to 5 punchy Hinglish words for the thumbnail banner (e.g. "Hero का Double Game!").
-- "thumb_image": an English prompt for the thumbnail illustration: one dramatic, symbolic scene with generic
-  fictional characters.
+- "thumb_image": an English prompt for the thumbnail illustration: one bold, symbolic close-up scene with generic
+  fictional characters, the main subject large in the lower two thirds of the frame.
 - "chapters": exactly 6 chapters, each {{"title": short Hindi chapter title (max 35 characters),
   "music": "tense" | "upbeat" | "chill",
   "visuals": 2-3 English Wikipedia article titles of the SPECIFIC companies, products or places in this chapter,
