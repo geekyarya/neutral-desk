@@ -16,13 +16,23 @@ LABEL = {"business": "केस स्टडी", "scam": "घोटाले �
 SFX = ["wind", "creak", "heartbeat", "whisper", "knock", "footsteps", "bell", "silence"]
 SCENES = ["house", "forest", "corridor", "road", "well", "station", "room", "village"]
 
-CHAPTER_KEYS = """- "title": a short Hindi title for the video (max 60 characters).
+SCENE_KEYS = """- "title": a punchy Hinglish YouTube title (max 70 characters) with a hook, in the style of
+  "Ather लो या Vida, पैसा तो Hero का ही बनेगा!" (Devanagari Hindi mixed with English brand names).
+- "hook": 2 short spoken sentences in Hindi that open the video with a curious question or surprising claim taken from
+  the text (no greeting, no channel name).
 - "summary": 2 sentences in Hindi for the video description.
-- "chapters": a list of exactly 6 chapters, each {{"title": short Hindi chapter title (max 35 characters),
-  "script": narration of {words} words in Hindi (Devanagari), simple spoken Hindi,
-  "visuals": 2-3 English Wikipedia article titles of the SPECIFIC companies, products, places or institutions in
-  this chapter, exactly as Wikipedia titles them, "image_queries": 2-3 short English photo-search phrases naming
-  the specific subject, "music": "tense" | "upbeat" | "chill"}}."""
+- "thumb_text": 3 to 5 punchy Hinglish words for the thumbnail banner (e.g. "Hero का Double Game!").
+- "thumb_image": an English prompt for the thumbnail illustration: one dramatic, symbolic scene with generic
+  fictional characters.
+- "chapters": exactly 6 chapters, each {{"title": short Hindi chapter title (max 35 characters),
+  "music": "tense" | "upbeat" | "chill",
+  "visuals": 2-3 English Wikipedia article titles of the SPECIFIC companies, products or places in this chapter,
+  "scenes": exactly 5 scenes, each {{"line": 1-2 spoken sentences in Hindi (Devanagari), 25 to 35 words, in a warm,
+  conversational storyteller voice,
+  "image": an English prompt describing what to illustrate for this line: setting, action, mood, with GENERIC
+  FICTIONAL characters (e.g. "a middle-aged businessman in a navy suit"); never a real named person's face, no text,
+  "text": a punchy on-screen phrase of at most 4 words in Hinglish for key moments, otherwise "",
+  "hl": 1 to 3 words copied exactly from "line" to highlight on screen (numbers, key terms)}}}}."""
 
 BUSINESS_PROMPT = """You write a Hindi YouTube long-form BUSINESS CASE STUDY for the fact-first channel Zero Masala.
 Topic: {topic}. Use ONLY the Wikipedia text below. First decide whether it is safe: if it mainly concerns a death,
@@ -31,7 +41,7 @@ Chapters in order: 1 an intriguing hook and the company today, 2 how it started,
 4 the turning point or crisis, 5 what happened next (state numbers and dates only if they are in the text), 6 three
 clear lessons for viewers. Neutral tone, no investment advice, no claims beyond the text. {style}
 Return JSON with:
-""" + CHAPTER_KEYS + """
+""" + SCENE_KEYS + """
 
 WIKIPEDIA TEXT:
 {text}
@@ -46,7 +56,7 @@ was caught, 5 what the courts and authorities concluded (use "alleged" for anyth
 signs viewers can use to protect themselves. Never explain how to commit fraud. Name only people the text names.
 {style}
 Return JSON with:
-""" + CHAPTER_KEYS + """
+""" + SCENE_KEYS + """
 
 WIKIPEDIA TEXT:
 {text}
@@ -103,6 +113,29 @@ def _clean_chapters(res, cfg, keys=("title", "script")):
     return out
 
 
+def _clean_scene_chapters(res, cfg):
+    lang = cfg["channel"]["language"]
+    fixes = cfg["editor"].get("spelling_fixes") or {}
+    out = []
+    for c in res.get("chapters") or []:
+        scenes = []
+        for sc in (c.get("scenes") or []) if isinstance(c, dict) else []:
+            if not isinstance(sc, dict) or not str(sc.get("line") or "").strip():
+                continue
+            if wrong_language(sc, lang, ("line",)):
+                continue
+            sc = _fix_spelling({**sc, "line": str(sc["line"]).strip()}, fixes)
+            line = sc["line"]
+            scenes.append({"line": line, "image": str(sc.get("image") or "")[:500],
+                           "text": str(sc.get("text") or "").strip()[:30],
+                           "hl": [w for w in (sc.get("hl") or []) if isinstance(w, str) and w in line][:3]})
+        if len(scenes) >= 3:
+            out.append({"title": str(c.get("title") or "").strip(), "scenes": scenes,
+                        "script": " ".join(x["line"] for x in scenes),
+                        "music": c.get("music"), "visuals": c.get("visuals") or []})
+    return out
+
+
 def _episode(cfg, fmt, res, chapters, sources, today):
     name = cfg["channel"].get("spoken_name") or cfg["channel"]["name"]
     title = str(res.get("title") or "").strip()
@@ -122,6 +155,13 @@ def _episode(cfg, fmt, res, chapters, sources, today):
         "horror": f"तो दोस्तों, ये थी आज की काल्पनिक डरावनी कहानी। कैसी लगी, कमेंट में बताइए, और {name} को फॉलो कीजिए। "
                   "अब नींद आएगी या नहीं, ये आप जानिए!",
     }[fmt]
+    scene_fmt = fmt in ("business", "scam")
+    if scene_fmt:
+        hook = str(res.get("hook") or "").strip()
+        intro_txt = hook or intro_txt
+        outro_txt = {"business": f"तो ये थी आज की कहानी। पसंद आई हो तो वीडियो को लाइक और शेयर कीजिए, और {name} को फॉलो कीजिए।",
+                     "scam": f"तो ये थी पूरी कहानी। सतर्क रहिए, और ये वीडियो उन्हें भी भेजिए जिन्हें इसकी ज़रूरत है। "
+                             f"{name} को फॉलो कीजिए।"}[fmt]
     segs = [{"id": "intro", "kind": "intro", "headline": title, "script": intro_txt}]
     for i, c in enumerate(chapters, 1):
         seg = {"id": f"ch{i:02d}", "kind": "story", "section": fmt, "headline": c["title"], "script": c["script"],
@@ -132,6 +172,8 @@ def _episode(cfg, fmt, res, chapters, sources, today):
                "image_queries": [str(q) for q in (c.get("image_queries") or [])][:3],
                "confirmed_facts": [], "disputed": [], "n_outlets": 1, "countries": [], "foreign": False,
                "sources": sources}
+        if scene_fmt:
+            seg.update(scenes=c["scenes"], voice="story", visuals=[str(v) for v in (c.get("visuals") or [])][:3])
         if fmt == "horror":
             sc = c.get("scene") if c.get("scene") in SCENES else SCENES[i % len(SCENES)]
             seg.update(scene=sc, sfx=[x for x in c.get("sfx") or [] if x in SFX][:3] or ["wind"],
@@ -141,7 +183,8 @@ def _episode(cfg, fmt, res, chapters, sources, today):
         segs.append(seg)
     segs.append({"id": "outro", "kind": "outro", "headline": name, "script": outro_txt})
     tag = LABEL[fmt]
-    yt_title = f"{title} | {tag}"
+    yt_title = f"{title} | {'Case Study' if fmt == 'business' else 'Scam Story' if fmt == 'scam' else tag}" \
+        if scene_fmt else f"{title} | {tag}"
     if len(yt_title) > 100:
         yt_title = title[:90]
     lines = [str(res.get("summary") or "").strip(), "", "अध्याय:"]
@@ -155,7 +198,8 @@ def _episode(cfg, fmt, res, chapters, sources, today):
             "horror": "#horrorstory #darawanikahani #hindi #zeromasala"}[fmt]
     lines += ["", tags]
     return {"date": today.isoformat(), "channel": cfg["channel"]["name"], "language": cfg["channel"]["language"],
-            "format": fmt, "title": yt_title, "description": "\n".join(lines)[:4900], "tag": tag,
+            "format": fmt, "thumb_text": str(res.get("thumb_text") or "").strip(),
+            "thumb_image": str(res.get("thumb_image") or "").strip()[:500], "title": yt_title, "description": "\n".join(lines)[:4900], "tag": tag,
             "segments": segs}
 
 
@@ -165,8 +209,9 @@ def build_special(cfg, fmt, today=None):
     today = today or dt.datetime.now(dt.timezone(dt.timedelta(hours=5, minutes=30))).date()
     sp = cfg.get("special") or {}
     words = sp.get("words", "110 to 130")
-    style = "Tone: " + ("a gripping, hushed storyteller" if fmt == "horror" else "an engaging Gen Z-friendly "
-                        "storyteller; light humour, no shouting, no taunts")
+    style = "Tone: " + ("a gripping, hushed storyteller" if fmt == "horror" else
+                        "a warm, witty finance-YouTuber storyteller talking to a friend in simple Hinglish-flavoured "
+                        "Hindi, with rhetorical questions, vivid comparisons and light humour; no shouting, no taunts")
     lang = "Hindi"
     if fmt == "horror":
         themes = sp.get("horror_themes") or ["एक सुनसान रेलवे स्टेशन की आखिरी ट्रेन"]
@@ -199,7 +244,7 @@ def build_special(cfg, fmt, today=None):
         if res.get("skip"):
             print(f"   skipping sensitive topic: {title}")
             continue
-        chapters = _clean_chapters(res, cfg)
+        chapters = _clean_scene_chapters(res, cfg)
         if len(chapters) < 4:
             print(f"   not enough usable chapters for {title}")
             continue

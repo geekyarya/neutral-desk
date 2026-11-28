@@ -268,8 +268,40 @@ def render_special(ep, cfg, out_dir):
         return img
 
     # visuals per segment: list of (image) already cropped for Ken Burns
-    visual = {}
+    visual, bounds, hl_words = {}, {}, {}
+    thumb_src = None
+    if ep.get("thumb_path") and (out_dir / ep["thumb_path"]).exists():
+        try:
+            thumb_src = _cover(Image.open(out_dir / ep["thumb_path"]).convert("RGB"), int(W * 1.12), int(H * 1.12))
+        except OSError:
+            pass
     for k, sg in enumerate(segs):
+        if sg.get("scenes") and not horror:  # illustrated case study: one picture per scene, timed by words spoken
+            words = [max(1, len(sc["line"].split())) for sc in sg["scenes"]]
+            bounds[k] = np.concatenate([[0], np.cumsum(words)]) / sum(words)
+            hl_words[k] = {w.strip(".,!?।\"'").lower() for sc in sg["scenes"] for h in sc.get("hl") or [] for w in h.split()}
+            photos = []
+            for im in sg.get("images") or []:
+                try:
+                    photos.append(_cover(Image.open(out_dir / im["path"]).convert("RGB"), int(W * 1.12), int(H * 1.12)))
+                except OSError:
+                    pass
+            imgs = []
+            for j, sc in enumerate(sg["scenes"]):
+                img = None
+                if sc.get("path") and (out_dir / sc["path"]).exists():
+                    try:
+                        img = _cover(Image.open(out_dir / sc["path"]).convert("RGB"), int(W * 1.12), int(H * 1.12))
+                    except OSError:
+                        img = None
+                if img is None:
+                    img = photos[j % len(photos)] if photos else title_card(sc.get("text") or sg["headline"])
+                imgs.append((img, None))
+            visual[k] = imgs
+            continue
+        if thumb_src is not None and sg["kind"] == "intro" and not horror:
+            visual[k] = [(thumb_src, None)]
+            continue
         imgs = []
         for im in sg.get("images") or []:
             try:
@@ -333,12 +365,41 @@ def render_special(ep, cfg, out_dir):
             layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
             d = ImageDraw.Draw(layer)
             y = H - s(150)
+            hl = hl_words.get(k) or set()
             for line in wrap(d, chunks[k][ci], f["cap"], W - s(300), 2):
                 x = (W - f["cap"].length(d, line)) / 2 - (s(80) if pip else 0)
-                f["cap"].draw(d, (x, y), line, (255, 236, 120) if not horror else (235, 235, 235), 5, (0, 0, 0))
-                y += s(46)
+                if not hl:
+                    f["cap"].draw(d, (x, y), line, (255, 236, 120) if not horror else (235, 235, 235), 5, (0, 0, 0))
+                else:  # key words and numbers sit on a yellow tag, like the reference videos
+                    space = f["cap"].length(d, " ")
+                    for w in line.split():
+                        wl = f["cap"].length(d, w)
+                        bare = w.strip(".,!?।\"'").lower()
+                        if bare in hl or any(c.isdigit() or c in "₹%" for c in w):
+                            d.rounded_rectangle([x - s(8), y - s(4), x + wl + s(8), y + s(46)], radius=s(8),
+                                                fill=(255, 214, 40))
+                            f["cap"].draw(d, (x, y), w, (20, 20, 20))
+                        else:
+                            f["cap"].draw(d, (x, y), w, WHITE, 5, (0, 0, 0))
+                        x += wl + space
+                y += s(50)
             cap_cache[key] = layer
         return cap_cache[key]
+
+    punch_cache = {}
+
+    def punch_layer(k, j):
+        if (k, j) not in punch_cache:
+            layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            d = ImageDraw.Draw(layer)
+            big = Font(s(70), True)
+            text = segs[k]["scenes"][j]["text"]
+            tw = big.length(d, text)
+            d.rounded_rectangle([(W - tw) / 2 - s(30), H * 0.36 - s(14), (W + tw) / 2 + s(30), H * 0.36 + s(92)],
+                                radius=s(14), fill=(0, 0, 0, 140))
+            big.draw(d, ((W - tw) / 2, H * 0.36), text, (255, 255, 255), 6, (0, 0, 0))
+            punch_cache[(k, j)] = layer
+        return punch_cache[(k, j)]
 
     def frame_rgb(i):
         k = int(seg_of[i])
@@ -346,9 +407,15 @@ def render_special(ep, cfg, out_dir):
         tl = i / fps - starts[k]
         dur = sg["duration"]
         imgs = visual[k] or [(plain, None)]
-        slot = dur / len(imgs)
-        j = min(int(tl / slot), len(imgs) - 1)
-        p = (tl - j * slot) / slot
+        bd = bounds.get(k)
+        if bd is not None:
+            x = min(tl / dur, 0.9999)
+            j = min(int(np.searchsorted(bd, x, side="right")) - 1, len(imgs) - 1)
+            p = (x - bd[j]) / max(bd[j + 1] - bd[j], 1e-6)
+        else:
+            slot = dur / len(imgs)
+            j = min(int(tl / slot), len(imgs) - 1)
+            p = (tl - j * slot) / slot
         base = _kenburns(imgs[j][0], p, W, H, j % 2 == 1).convert("RGBA")
         if sg["kind"] != "story" and not horror:  # intro/outro: darker title card look
             base = Image.blend(base, Image.new("RGBA", (W, H), (8, 14, 30, 255)), 0.55)
@@ -366,6 +433,8 @@ def render_special(ep, cfg, out_dir):
             if dark:
                 base.alpha_composite(Image.new("RGBA", (W, H), (0, 0, 0, dark)))
         base.alpha_composite(top_layer(k))
+        if bd is not None and segs[k]["scenes"][j].get("text") and (tl - bd[j] * dur) < 2.4:
+            base.alpha_composite(punch_layer(k, j))
         chs = chunks[k]
         if chs:
             ci = min(int(tl / dur * len(chs)), len(chs) - 1)
@@ -389,20 +458,41 @@ def render_special(ep, cfg, out_dir):
 
 def save_special_thumbnail(ep, visual, cfg, out_dir, L, horror):
     W, H, s = L.W, L.H, L.s
-    k = next((k for k, sg in enumerate(ep["segments"]) if sg["kind"] == "story" and visual.get(k)), None)
-    base = (visual[k][0][0] if k is not None else Image.new("RGB", (W, H), (14, 26, 52)))
+    base = None
+    if ep.get("thumb_path") and (Path(out_dir) / ep["thumb_path"]).exists():
+        try:
+            base = Image.open(Path(out_dir) / ep["thumb_path"]).convert("RGB")
+        except OSError:
+            base = None
+    if base is None:
+        k = next((k for k, sg in enumerate(ep["segments"]) if sg["kind"] == "story" and visual.get(k)), None)
+        base = visual[k][0][0] if k is not None else Image.new("RGB", (W, H), (14, 26, 52))
     img = _cover(base, W, H).convert("RGBA")
-    img.alpha_composite(Image.fromarray(np.dstack([np.zeros((H, W, 3), np.uint8),
-                                                   np.full((H, W), 120, np.uint8)]), "RGBA"))
     d = ImageDraw.Draw(img)
-    big = Font(s(64), True)
-    y = s(150)
-    for line in wrap(d, ep["segments"][0]["headline"], big, W - s(120), 4):
-        big.draw(d, (s(60), y), line, WHITE, 6, (0, 0, 0))
-        y += s(80)
-    tag = ep["tag"]
-    tf = Font(s(34), True)
-    tw = tf.length(d, tag)
-    d.rectangle([s(60), y + s(20), s(100) + tw, y + s(80)], fill=ACCENT if horror else (30, 150, 80))
-    tf.draw(d, (s(80), y + s(26)), tag, WHITE)
-    img.convert("RGB").save(out_dir / "thumbnail.jpg", quality=92)
+    text = ep.get("thumb_text") or ep["segments"][0]["headline"]
+    if ep.get("thumb_text") and not horror:  # bold banner across the top, like the reference
+        big = Font(s(78), True)
+        lines = wrap(d, text, big, W - s(140), 2)
+        bh = s(30) + len(lines) * s(96)
+        d.rectangle([0, s(18), W, s(18) + bh], fill=(255, 214, 40))
+        d.rectangle([0, s(18), s(26), s(18) + bh], fill=ACCENT)
+        d.rectangle([W - s(26), s(18), W, s(18) + bh], fill=ACCENT)
+        y = s(30)
+        for line in lines:
+            big.draw(d, ((W - big.length(d, line)) / 2, y), line, (15, 15, 15))
+            y += s(96)
+    else:
+        img.alpha_composite(Image.fromarray(np.dstack([np.zeros((H, W, 3), np.uint8),
+                                                       np.full((H, W), 120, np.uint8)]), "RGBA"))
+        d = ImageDraw.Draw(img)
+        big = Font(s(64), True)
+        y = s(150)
+        for line in wrap(d, ep["segments"][0]["headline"], big, W - s(120), 4):
+            big.draw(d, (s(60), y), line, WHITE, 6, (0, 0, 0))
+            y += s(80)
+        tag = ep["tag"]
+        tf = Font(s(34), True)
+        tw = tf.length(d, tag)
+        d.rectangle([s(60), y + s(20), s(100) + tw, y + s(80)], fill=ACCENT if horror else (30, 150, 80))
+        tf.draw(d, (s(80), y + s(26)), tag, WHITE)
+    img.convert("RGB").save(Path(out_dir) / "thumbnail.jpg", quality=92)

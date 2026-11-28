@@ -227,6 +227,8 @@ class Speaker:
 def segment_mood(seg):
     if seg.get("kind") == "intro":
         return "intro"
+    if seg.get("voice") == "story":
+        return "story"  # case studies: warm, conversational storyteller
     if seg.get("tragedy"):
         return "serious"  # deaths, disasters, violence: calm and respectful, no jokes
     return "angry" if seg.get("angry") else "calm"

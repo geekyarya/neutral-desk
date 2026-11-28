@@ -1,0 +1,20 @@
+# One-off: which free image generators work from the runner with our key?
+name: imgtest
+on: workflow_dispatch
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install requests pillow
+      - env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python - <<'PY'
+          import os, time
+          from newsdesk.imagegen import gemini_image, generate
+          t=time.time(); p=gemini_image("two businessmen shaking hands in a motorcycle factory", "/tmp/g.jpg"); print("GEMINI:", p, round(time.time()-t,1),"s")
+          t=time.time(); p=generate("a chessboard with motorcycle pieces, dramatic light", "/tmp/p.jpg", 5); print("ANY:", p, round(time.time()-t,1),"s")
+          PY

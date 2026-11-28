@@ -45,6 +45,9 @@ PERSONAS = {
             "intro": "Style: a TV anchor opening his show after three coffees. Delivery: big, loud, "
                      "chaotic high-energy welcome.",
             "default": "Style: a lively Indian TV news anchor. Delivery: natural rhythm.",
+            "story": "Style: a warm, engaging Hindi business storyteller, like a popular finance YouTuber talking to a "
+                     "friend. Delivery: conversational and natural, curious rising tone on hooks, clear emphasis on "
+                     "numbers and punchlines, short pauses before reveals; never shouting, never robotic.",
         },
         "pitch": 0.93,          # a bit deeper
         "length_scale": 0.72,   # faster, more urgent

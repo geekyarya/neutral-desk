@@ -87,6 +87,11 @@ def stage_video(cfg, d, ep):
         print("Finding free photos for each story...")
         ep = add_story_images(ep, d, videos=not ep.get("format"))  # special videos: photos only, clips are rarely on-topic
         save(ep, d)
+    if ep.get("format") in ("business", "scam"):
+        from newsdesk.imagegen import generate_scenes
+        print("Illustrating the scenes (free AI images)...")
+        ep = generate_scenes(ep, d)
+        save(ep, d)
     if ep.get("format") in ("business", "scam", "horror"):
         from newsdesk.longform import render_special
         out = render_special(ep, cfg, d)
